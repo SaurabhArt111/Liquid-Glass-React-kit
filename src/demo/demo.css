@@ -1,0 +1,322 @@
+:root {
+  --ink: #090c18;
+  --panel: #10142a;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #eaeeff;
+  --muted: #98a2cf;
+  --blue: #3f6bff;
+  --coral: #ff5f7e;
+  --sun: #ffc83d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  color: #cdd6ff;
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 200, 61, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 200, 61, 0.08);
+  color: #ffe6a3;
+  font-size: 14px;
+}
+
+/* ---------------------------------- stages --------------------------------- */
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  contain: paint;
+}
+
+.stage.tall {
+  min-height: 420px;
+}
+
+.stage--grid {
+  background-color: #12162e;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    radial-gradient(120% 100% at 10% 0%, #1d2350, #0d1023);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  background-position: 12px 12px, 12px 12px, 0 0;
+}
+
+.stage--aurora {
+  background:
+    radial-gradient(55% 85% at 12% 15%, rgba(255, 95, 126, 0.95), transparent 62%),
+    radial-gradient(50% 75% at 88% 25%, rgba(63, 107, 255, 0.95), transparent 62%),
+    radial-gradient(60% 60% at 58% 105%, rgba(255, 200, 61, 0.9), transparent 62%),
+    #15183a;
+}
+
+.stage--stripes {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #1b2456 0 26px,
+      #ff6a5c 26px 34px,
+      #0f1330 34px 60px,
+      #ffc83d 60px 64px
+    );
+}
+
+.readout {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(9, 12, 24, 0.55);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ----------------------------------- hero ---------------------------------- */
+
+.hero {
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  min-height: 520px;
+  padding: 44px clamp(24px, 6vw, 72px);
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(44px, 8.4vw, 104px);
+  text-wrap: balance;
+  line-height: 0.92;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #fff;
+  user-select: none;
+}
+
+.hero-sub {
+  margin: 24px 0 0;
+  max-width: 34ch;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.86);
+  user-select: none;
+}
+
+/* --------------------------------- sections -------------------------------- */
+
+.block {
+  margin-top: 72px;
+}
+
+.block-head h2 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+.block-head p {
+  margin: 0 0 24px;
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  gap: 20px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+
+.card header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.code {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.block > .code {
+  margin-top: 14px;
+}
+
+/* ------------------------------- demo content ------------------------------ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 0 30px;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+}
+.panel strong {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.panel span {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.panel-time {
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.orb {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* -------------------------------- playground ------------------------------- */
+
+.play {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.ctl {
+  display: grid;
+  grid-template-columns: 120px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.ctl output {
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  color: var(--text);
+}
+.ctl select {
+  grid-column: 2 / 4;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0a0d1f;
+  color: var(--text);
+  font: inherit;
+}
+.ctl input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue);
+}
+
+.controls .toggle {
+  align-self: flex-start;
+  background: transparent;
+  padding-left: 0;
+  color: var(--muted);
+}
+
+.reset {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.reset:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.foot {
+  margin-top: 72px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .play {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    min-height: 460px;
+  }
+}

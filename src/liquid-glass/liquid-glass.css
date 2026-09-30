@@ -1,0 +1,141 @@
+/* Liquid Glass — component styles. Plain CSS, no framework. */
+
+.lg-root {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* keeps the springy scale from triggering layout */
+  will-change: transform;
+}
+
+.lg-draggable {
+  cursor: grab;
+}
+.lg-draggable:active {
+  cursor: grabbing;
+}
+
+.lg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lg-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lg-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ---------------------------------- Searchbox --------------------------------- */
+
+.lg-searchbox {
+  cursor: text;
+}
+.lg-searchbox .lg-content {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 20px;
+  color: rgba(255, 255, 255, 0.92);
+}
+.lg-searchbox svg {
+  flex: none;
+  opacity: 0.7;
+}
+.lg-searchbox input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.lg-searchbox input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+.lg-searchbox input::selection {
+  background: rgba(80, 140, 255, 0.4);
+}
+.lg-searchbox input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* ------------------------------------ Button ---------------------------------- */
+
+.lg-button {
+  cursor: pointer;
+  outline: none;
+}
+.lg-button .lg-content {
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  gap: 8px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+.lg-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 4px;
+}
+
+/* ------------------------------------ Switch ---------------------------------- */
+
+.lg-switch {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  touch-action: pan-y;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-switch:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 4px;
+}
+
+/* ------------------------------------ Slider ---------------------------------- */
+
+.lg-slider {
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-slider:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.lg-slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  background: rgba(137, 137, 143, 0.4);
+}
+.lg-slider-fill {
+  height: 100%;
+}
