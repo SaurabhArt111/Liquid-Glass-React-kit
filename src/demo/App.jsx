@@ -319,7 +319,11 @@ export default function App() {
       <Playground />
 
       <footer className="foot">
-        Based on Kube’s “Liquid Glass in the Browser: Refraction with CSS and SVG”. Ported to plain React + CSS.
+        <span>Based on Kube’s “Liquid Glass in the Browser: Refraction with CSS and SVG”. Ported to plain React + CSS.</span>
+        <a className="contact" href="https://github.com/SaurabhArt111/" target="_blank" rel="noopener noreferrer">
+          <span aria-hidden="true">↗</span>
+          GitHub
+        </a>
       </footer>
     </main>
   );

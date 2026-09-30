@@ -87,14 +87,11 @@ code {
 }
 
 .stage--stripes {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #1b2456 0 26px,
-      #ff6a5c 26px 34px,
-      #0f1330 34px 60px,
-      #ffc83d 60px 64px
-    );
+  background-image: url("https://i.pinimg.com/736x/67/37/d6/6737d682860c15f13bb3c9208dad9ea8.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* background: repeating-linear-gradient(90deg, #1b2456 0 26px, #ff6a5c 26px 34px, #0f1330 34px 60px, #ffc83d 60px 64px); */
 }
 
 .readout {
@@ -200,7 +197,7 @@ code {
   line-height: 1.55;
 }
 
-.block > .code {
+.block>.code {
   margin-top: 14px;
 }
 
@@ -215,14 +212,17 @@ code {
   color: #fff;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
+
 .panel strong {
   font-size: 24px;
   letter-spacing: -0.02em;
 }
+
 .panel span {
   font-size: 14px;
   opacity: 0.85;
 }
+
 .panel-time {
   margin-top: 8px;
   font-variant-numeric: tabular-nums;
@@ -263,11 +263,13 @@ code {
   font-size: 12px;
   color: var(--muted);
 }
+
 .ctl output {
   text-align: right;
   font-family: ui-monospace, monospace;
   color: var(--text);
 }
+
 .ctl select {
   grid-column: 2 / 4;
   padding: 4px 8px;
@@ -277,6 +279,7 @@ code {
   color: var(--text);
   font: inherit;
 }
+
 .ctl input[type="range"] {
   width: 100%;
   accent-color: var(--blue);
@@ -300,11 +303,17 @@ code {
   font-size: 13px;
   cursor: pointer;
 }
+
 .reset:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
 .foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  flex-wrap: wrap;
   margin-top: 72px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
@@ -312,10 +321,35 @@ code {
   font-size: 13px;
 }
 
+.contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.contact:hover {
+  border-color: rgba(255, 200, 61, 0.55);
+  background: rgba(255, 200, 61, 0.08);
+  transform: translateY(-1px);
+}
+
+.contact:focus-visible {
+  outline: 2px solid var(--sun);
+  outline-offset: 3px;
+}
+
 @media (max-width: 860px) {
   .play {
     grid-template-columns: 1fr;
   }
+
   .hero {
     min-height: 460px;
   }
