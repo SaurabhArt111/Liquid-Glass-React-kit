@@ -1,21 +1,44 @@
-:root {
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
   --ink: #090c18;
   --panel: #10142a;
   --line: rgba(255, 255, 255, 0.09);
   --text: #eaeeff;
   --muted: #98a2cf;
+  --code: #cdd6ff;
+  --chip: rgba(9, 12, 24, 0.55);
+  --field: #0a0d1f;
   --blue: #3f6bff;
   --coral: #ff5f7e;
   --sun: #ffc83d;
+  --lg-nav-fg: #eaeeff;
+  --lg-nav-accent: #7fb0ff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --ink: #e9eaee;
+  --panel: #ffffff;
+  --line: rgba(20, 26, 70, 0.12);
+  --text: #151a3a;
+  --muted: #5a6493;
+  --code: #2a3a9a;
+  --chip: rgba(255, 255, 255, 0.78);
+  --field: #ffffff;
+  --lg-nav-fg: #151a3a;
+  --lg-nav-accent: #0052f5;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
   background: var(--ink);
   color: var(--text);
+  transition: background 400ms cubic-bezier(1, 0, 0.4, 1), color 400ms cubic-bezier(1, 0, 0.4, 1);
 }
 
 body {
@@ -29,13 +52,13 @@ body {
 code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.88em;
-  color: #cdd6ff;
+  color: var(--code);
 }
 
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: 96px 20px 64px;
 }
 
 .notice {
@@ -78,12 +101,31 @@ code {
   background-position: 12px 12px, 12px 12px, 0 0;
 }
 
+[data-theme="light"] .stage--grid {
+  --lg-fg: #151a3a;
+  background-color: #eef0fb;
+  background-image:
+    linear-gradient(to right, rgba(20, 30, 90, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 30, 90, 0.09) 1px, transparent 1px),
+    radial-gradient(120% 100% at 10% 0%, #ffffff, #dde2f6);
+}
+
+.stage--aurora,
+.stage--stripes {
+  --lg-nav-fg: #fff;
+  --lg-nav-accent: #a9c8ff;
+}
+
 .stage--aurora {
-  background:
+  background-image: url("https://i.pinimg.com/736x/67/37/d6/6737d682860c15f13bb3c9208dad9ea8.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* background:
     radial-gradient(55% 85% at 12% 15%, rgba(255, 95, 126, 0.95), transparent 62%),
     radial-gradient(50% 75% at 88% 25%, rgba(63, 107, 255, 0.95), transparent 62%),
     radial-gradient(60% 60% at 58% 105%, rgba(255, 200, 61, 0.9), transparent 62%),
-    #15183a;
+    #15183a; */
 }
 
 .stage--stripes {
@@ -106,7 +148,7 @@ code {
   gap: 8px;
   padding: 5px 10px;
   border-radius: 8px;
-  background: rgba(9, 12, 24, 0.55);
+  background: var(--chip);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -275,7 +317,7 @@ code {
   padding: 4px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #0a0d1f;
+  background: var(--field);
   color: var(--text);
   font: inherit;
 }
@@ -310,10 +352,10 @@ code {
 
 .foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px 24px;
-  flex-wrap: wrap;
+  gap: 16px;
   margin-top: 72px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
@@ -324,25 +366,68 @@ code {
 .contact {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 9px;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
   color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
   text-decoration: none;
-  white-space: nowrap;
-  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  transition: transform 200ms cubic-bezier(0.5, 0, 0, 1), border-color 160ms;
 }
 
 .contact:hover {
-  border-color: rgba(255, 200, 61, 0.55);
-  background: rgba(255, 200, 61, 0.08);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  border-color: var(--blue);
 }
 
 .contact:focus-visible {
-  outline: 2px solid var(--sun);
+  outline: 2px solid var(--blue);
   outline-offset: 3px;
+}
+
+/* --------------------------------- top bar --------------------------------- */
+
+.topbar {
+  position: fixed;
+  top: 14px;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  pointer-events: none;
+}
+
+.topbar>* {
+  pointer-events: auto;
+}
+
+.block {
+  scroll-margin-top: 88px;
+}
+
+/* ---------------------------------- usage ---------------------------------- */
+
+.usage {
+  display: grid;
+  gap: 14px;
+}
+
+.usage .code {
+  margin: 0;
+}
+
+.usage-note {
+  margin: 16px 0 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 @media (max-width: 860px) {

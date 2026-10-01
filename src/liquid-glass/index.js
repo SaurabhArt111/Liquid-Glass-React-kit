@@ -7,5 +7,8 @@ export { LiquidSearchbox } from "./components/LiquidSearchbox.jsx";
 export { LiquidSwitch } from "./components/LiquidSwitch.jsx";
 export { LiquidSlider } from "./components/LiquidSlider.jsx";
 export { LiquidButton } from "./components/LiquidButton.jsx";
+export { LiquidNav } from "./components/LiquidNav.jsx";
+export { LiquidThemeSwitch } from "./components/LiquidThemeSwitch.jsx";
+export { SunIcon, MoonIcon } from "./components/icons.jsx";
 export { SURFACES } from "./lib/surfaces.js";
 export { supportsSvgBackdrop } from "./lib/utils.js";

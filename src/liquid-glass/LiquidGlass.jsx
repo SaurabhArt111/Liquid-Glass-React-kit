@@ -37,7 +37,8 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     magnify = 0, // zoom strength while active (0 = off)
     restMagnify, // zoom at rest (default 50 % of `magnify`)
     /* surface */
-    tint = 0.05, // white overlay alpha at rest
+    tint = 0.05, // overlay alpha at rest
+    tintColor = "255,255,255", // overlay colour as "r,g,b"
     activeTint, // white overlay alpha while active (default = tint)
     shadow = 1, // shadow strength multiplier (0 = none)
     /* motion */
@@ -157,7 +158,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       `inset 0 0 0 1px rgba(255,255,255,0.14)`,
     ].join(", ");
   });
-  const backgroundColor = useTransform(tintMv, (a) => `rgba(255,255,255,${svgBackdrop ? a : Math.max(a, 0.1)})`);
+  const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${svgBackdrop ? a : Math.max(a, 0.1)})`);
   const backdropFilter = svgBackdrop ? `url(#${filterId})` : "blur(14px) saturate(1.7) brightness(1.06)";
 
   /* -------------------------------- dragging ------------------------------ */

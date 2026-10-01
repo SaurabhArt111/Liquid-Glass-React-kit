@@ -51,7 +51,7 @@
   justify-content: flex-start;
   gap: 12px;
   padding: 0 20px;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--lg-fg, rgba(255, 255, 255, 0.92));
 }
 .lg-searchbox svg {
   flex: none;
@@ -72,7 +72,7 @@
   -webkit-user-select: text;
 }
 .lg-searchbox input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
+  color: color-mix(in srgb, currentColor 55%, transparent);
 }
 .lg-searchbox input::selection {
   background: rgba(80, 140, 255, 0.4);
@@ -138,4 +138,67 @@
 }
 .lg-slider-fill {
   height: 100%;
+}
+
+/* ------------------------------------- Nav ------------------------------------ */
+
+.lg-nav {
+  color: var(--lg-nav-fg, #fff);
+}
+/* let the sliding lens inflate past the bar's edge */
+.lg-nav .lg-content {
+  overflow: visible;
+}
+.lg-nav-inner {
+  position: relative;
+  flex: none;
+}
+.lg-nav-items {
+  position: absolute;
+  display: flex;
+}
+.lg-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  opacity: 0.62;
+  touch-action: pan-y;
+  transition: opacity 160ms, color 160ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-nav-item svg {
+  flex: none;
+  transition: scale 200ms cubic-bezier(0.5, 0, 0, 1);
+}
+.lg-nav-item:hover:not(.is-active) {
+  opacity: 1;
+  color: var(--lg-nav-accent, #7fb0ff);
+}
+.lg-nav-item:hover:not(.is-active) svg {
+  scale: 1.2;
+}
+.lg-nav-item.is-active {
+  opacity: 1;
+  cursor: grab;
+}
+.lg-nav-item.is-active:active {
+  cursor: grabbing;
+}
+.lg-nav-item:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-nav-accent, #7fb0ff);
 }

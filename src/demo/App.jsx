@@ -3,11 +3,16 @@ import {
   LiquidButton,
   LiquidGlass,
   LiquidMagnifier,
+  LiquidNav,
   LiquidSearchbox,
   LiquidSlider,
   LiquidSwitch,
+  LiquidThemeSwitch,
   supportsSvgBackdrop,
 } from "../liquid-glass";
+import { CompassIcon, HeartIcon, HomeIcon } from "./icons.jsx";
+
+/* --------------------------------- helpers --------------------------------- */
 
 function useViewportWidth() {
   const [w, setW] = useState(typeof window === "undefined" ? 1200 : window.innerWidth);
@@ -18,6 +23,102 @@ function useViewportWidth() {
   }, []);
   return w;
 }
+
+function useTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "dark");
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("lg-theme", theme);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [theme]);
+  return [theme, setTheme];
+}
+
+const SECTIONS = [
+  { id: "kit", long: "Kit", short: "Kit" },
+  { id: "any", long: "Any div", short: "Div" },
+  { id: "play", long: "Playground", short: "Play" },
+  { id: "usage", long: "Usage", short: "Docs" },
+];
+
+/** Highlights the section under the middle of the viewport; `lock` pauses it during click-scrolls. */
+function useScrollSpy(ids, lock) {
+  const [active, setActive] = useState(ids[0]);
+  useEffect(() => {
+    const els = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (lock.current) return;
+        const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (hit) setActive(hit.target.id);
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return [active, setActive];
+}
+
+/* ---------------------------------- top bar --------------------------------- */
+
+function TopBar({ theme, setTheme, active, onGo }) {
+  const vw = useViewportWidth();
+  const compact = vw < 640;
+  const height = compact ? 52 : 56;
+  const pad = 5;
+  const themeItem = compact ? 44 : 60;
+  const themeW = themeItem * 2 + pad * 2;
+  const navItem = Math.max(40, Math.min(96, Math.floor((vw - 24 - 8 - themeW - pad * 2) / SECTIONS.length)));
+  const long = navItem >= 84;
+  // Keep the surface translucent enough for the backdrop and refraction to read.
+  const backing =
+    theme === "light"
+      ? {
+          tint: 0.1,
+          activeTint: 0.16,
+          tintColor: "255,255,255",
+          glassThickness: 90,
+          refraction: 0.9,
+          restRefraction: 0.72,
+          blur: 0.4,
+          specularOpacity: 0.65,
+          specularSaturation: 8,
+        }
+      : {
+          tint: 0.08,
+          activeTint: 0.14,
+          tintColor: "12,16,40",
+          glassThickness: 90,
+          refraction: 0.9,
+          restRefraction: 0.72,
+          blur: 0.4,
+          specularOpacity: 0.65,
+          specularSaturation: 8,
+        };
+
+  return (
+    <div className="topbar">
+      <LiquidNav
+        label="Sections"
+        height={height}
+        padding={pad}
+        itemWidth={navItem}
+        items={SECTIONS.map((s) => ({ value: s.id, label: long ? s.long : s.short, href: "#" + s.id }))}
+        value={active}
+        onChange={onGo}
+        {...backing}
+      />
+      <LiquidThemeSwitch theme={theme} onChange={setTheme} itemWidth={themeItem} height={height} padding={pad} {...backing} />
+    </div>
+  );
+}
+
+/* --------------------------------- building blocks --------------------------------- */
 
 /** A backdrop with enough detail for refraction to be visible. */
 const Stage = ({ variant = "grid", className = "", children, stageRef }) => (
@@ -49,6 +150,7 @@ function Card({ title, text, code, children }) {
 
 function Hero() {
   const stageRef = useRef(null);
+  const small = useViewportWidth() < 640;
   return (
     <Stage variant="aurora" className="hero" stageRef={stageRef}>
       <h1 className="hero-title">
@@ -59,10 +161,10 @@ function Hero() {
       <p className="hero-sub">Drag the lens. Everything below is the same primitive, one div.</p>
       <LiquidMagnifier
         dragConstraints={stageRef}
-        width={280}
-        height={190}
-        bezelWidth={32}
-        style={{ position: "absolute", left: "36%", top: 84 }}
+        width={small ? 190 : 280}
+        height={small ? 130 : 190}
+        bezelWidth={small ? 22 : 32}
+        style={{ position: "absolute", left: small ? "14%" : "36%", top: small ? 150 : 84 }}
       />
     </Stage>
   );
@@ -142,12 +244,49 @@ function ButtonCard() {
   );
 }
 
+const TABS = [
+  { value: "home", label: "Home", icon: <HomeIcon /> },
+  { value: "explore", label: "Explore", icon: <CompassIcon /> },
+  { value: "saved", label: "Saved", icon: <HeartIcon /> },
+];
+
+function NavCard() {
+  const [tab, setTab] = useState("explore");
+  return (
+    <Card
+      title="Nav bar"
+      text="A glass bar with a lens that slides to the selected item, stretching as it moves. Tap an item or drag the lens."
+      code={`<LiquidNav items={tabs} value={tab} onChange={setTab} />`}
+    >
+      <Stage variant="aurora">
+        <LiquidNav label="Demo tabs" items={TABS} value={tab} onChange={setTab} itemWidth={88} height={68} />
+        <span className="readout">{tab}</span>
+      </Stage>
+    </Card>
+  );
+}
+
+function ThemeCard({ theme, setTheme }) {
+  return (
+    <Card
+      title="Theme switch"
+      text="The same nav with sun and moon items. This one is wired to the whole page, try it."
+      code={`<LiquidThemeSwitch theme={theme} onChange={setTheme} />`}
+    >
+      <Stage variant="grid">
+        <LiquidThemeSwitch theme={theme} onChange={setTheme} itemWidth={72} height={64} padding={6} />
+        <span className="readout">{theme}</span>
+      </Stage>
+    </Card>
+  );
+}
+
 /* ------------------------------- any div ---------------------------------- */
 
 function AnyDiv() {
   const stageRef = useRef(null);
   return (
-    <section className="block">
+    <section className="block" id="any">
       <div className="block-head">
         <h2>Put anything in it.</h2>
         <p>
@@ -241,7 +380,7 @@ function Playground() {
   const set = (k, v) => setP((s) => ({ ...s, [k]: v }));
 
   return (
-    <section className="block">
+    <section className="block" id="play">
       <div className="block-head">
         <h2>Playground</h2>
         <p>Every optical property is a prop. Geometry changes re-render the maps once and cache them.</p>
@@ -288,43 +427,98 @@ function Playground() {
   );
 }
 
+/* ---------------------------------- usage ---------------------------------- */
+
+function Usage() {
+  return (
+    <section className="block" id="usage">
+      <div className="block-head">
+        <h2>Use it in your app</h2>
+        <p>
+          Copy <code>src/liquid-glass/</code> into your project, add one dependency, and import. No build plugin, no
+          config.
+        </p>
+      </div>
+      <div className="usage">
+        <Code>{`npm i motion react react-dom`}</Code>
+        <Code>{`import { LiquidGlass, LiquidNav, LiquidSwitch } from "./liquid-glass";
+
+<LiquidGlass draggable width={220} height={120}>
+  …anything…
+</LiquidGlass>`}</Code>
+      </div>
+      <p className="usage-note">
+        Refraction uses <code>backdrop-filter: url(#svg)</code>, which only Chromium browsers implement. Everywhere else
+        the components fall back to a frosted blur.
+      </p>
+    </section>
+  );
+}
+
 /* ---------------------------------- app ----------------------------------- */
 
 export default function App() {
   const supported = supportsSvgBackdrop();
+  const [theme, setTheme] = useTheme();
+  const lock = useRef(false);
+  const [active, setActive] = useScrollSpy(SECTIONS.map((s) => s.id), lock);
+
+  const go = (id) => {
+    setActive(id);
+    lock.current = true;
+    const unlock = () => {
+      lock.current = false;
+    };
+    window.addEventListener("scrollend", unlock, { once: true });
+    setTimeout(unlock, 1600); // fallback where `scrollend` doesn't exist
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <main className="page">
-      {!supported && (
-        <p className="notice">
-          Your browser doesn’t support SVG filters in <code>backdrop-filter</code> (Chromium only). You’re seeing the
-          frosted-glass fallback — open this in Chrome, Edge or Arc for full refraction.
-        </p>
-      )}
-      <Hero />
+    <>
+      <TopBar theme={theme} setTheme={setTheme} active={active} onGo={go} />
+      <main className="page">
+        {!supported && (
+          <p className="notice">
+            Your browser doesn’t support SVG filters in <code>backdrop-filter</code> (Chromium only). You’re seeing the
+            frosted-glass fallback — open this in Chrome, Edge or Arc for full refraction.
+          </p>
+        )}
+        <Hero />
 
-      <section className="block">
-        <div className="block-head">
-          <h2>The kit</h2>
-          <p>Each one is a thin preset over <code>LiquidGlass</code>.</p>
-        </div>
-        <div className="grid">
-          <SwitchCard />
-          <SliderCard />
-          <SearchCard />
-          <ButtonCard />
-        </div>
-      </section>
+        <section className="block" id="kit">
+          <div className="block-head">
+            <h2>The kit</h2>
+            <p>
+              Each one is a thin preset over <code>LiquidGlass</code>.
+            </p>
+          </div>
+          <div className="grid">
+            <SwitchCard />
+            <SliderCard />
+            <SearchCard />
+            <ButtonCard />
+            <NavCard />
+            <ThemeCard theme={theme} setTheme={setTheme} />
+          </div>
+        </section>
 
-      <AnyDiv />
-      <Playground />
+        <AnyDiv />
+        <Playground />
+        <Usage />
 
-      <footer className="foot">
-        <span>Based on Kube’s “Liquid Glass in the Browser: Refraction with CSS and SVG”. Ported to plain React + CSS.</span>
-        <a className="contact" href="https://github.com/SaurabhArt111/" target="_blank" rel="noopener noreferrer">
-          <span aria-hidden="true">↗</span>
-          GitHub
-        </a>
-      </footer>
-    </main>
+        <footer className="foot">
+          <span>Based on Kube’s “Liquid Glass in the Browser: Refraction with CSS and SVG”. Ported to plain React + CSS.</span>
+          <LiquidButton
+            className="contact"
+            width={126}
+            height={42}
+            onClick={() => window.open("https://github.com/SaurabhArt111/", "_blank", "noopener,noreferrer")}
+          >
+            GitHub <span aria-hidden="true" >↗</span>
+          </LiquidButton>
+        </footer>
+      </main>
+    </>
   );
 }

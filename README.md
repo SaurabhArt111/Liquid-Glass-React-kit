@@ -63,7 +63,8 @@ const stage = useRef(null);
 | `refraction` / `restRefraction` | `1` / `0.8×` | strength while active / at rest (0–1) |
 | `specularOpacity`, `specularSaturation` | `0.5`, `6` | light rim + colour boost on it |
 | `magnify` / `restMagnify` | `0` / `0.5×` | zoom in the middle (0 = off) |
-| `tint` / `activeTint` | `0.05` / = `tint` | white overlay alpha at rest / active |
+| `tint` / `activeTint` | `0.05` / = `tint` | overlay alpha at rest / active |
+| `tintColor` | `"255,255,255"` | overlay colour as `"r,g,b"` |
 | `shadow` | `1` | shadow strength multiplier |
 | `restScale` / `activeScale` | `1` / `1.1` | scale at rest / while pressed (spring, bouncy) |
 | `jelly` | `1` | squash & stretch from drag velocity (`0` = off) |
@@ -85,6 +86,8 @@ Everything else is driven by springs and never re-renders React.
 <LiquidSlider value={v} onChange={setV} min={0} max={100} step={1} width={330} color="#0377F7" />
 <LiquidSearchbox width={420} placeholder="Search" onSubmit={(q) => search(q)} />
 <LiquidButton onClick={inc}>Pressed</LiquidButton>
+<LiquidNav items={tabs} value={tab} onChange={setTab} />
+<LiquidThemeSwitch theme={theme} onChange={setTheme} />
 <LiquidMagnifier dragConstraints={stageRef} style={{ position: "absolute", left: 40, top: 40 }} />
 ```
 
@@ -92,6 +95,30 @@ Every preset spreads extra props onto `LiquidGlass`, so you can override any of 
 optics (e.g. `<LiquidMagnifier magnify={80} width={260} />`). `LiquidSwitch` and
 `LiquidSlider` are controlled or uncontrolled (`defaultChecked` / `defaultValue`)
 and keyboard accessible (`role="switch"` / `role="slider"`).
+
+### `LiquidNav` / `LiquidThemeSwitch`
+
+A glass bar with a glass lens that slides to the selected item (spring overshoot +
+velocity-based jelly). Tap an item, or grab the lens and drag; it snaps to the nearest
+item on release. Labels are drawn above the lens so icons and text stay crisp.
+
+```jsx
+const items = [
+  { value: "home", label: "Home", icon: <HomeIcon /> },
+  { value: "saved", label: "Saved", icon: <HeartIcon /> },
+];
+<LiquidNav items={items} value={tab} onChange={setTab} itemWidth={88} height={68} />
+
+// with href → renders <a> links in role="navigation" (used for the page's top bar)
+<LiquidNav items={[{ value: "kit", label: "Kit", href: "#kit" }]} value={id} onChange={go} />
+
+<LiquidThemeSwitch theme="light" onChange={setTheme} />   // sun / moon
+```
+
+Text colour comes from `--lg-nav-fg` (hover: `--lg-nav-accent`). A bar that floats over
+arbitrary content should get a frosted backing so labels stay readable, e.g.
+`tint={0.6} tintColor="255,255,255"` (light) or `tint={0.34} tintColor="12,16,40"` (dark).
+`tintColor` is available on every `LiquidGlass`. Keyboard: ← → on radio-mode bars.
 
 ## Browser support
 
@@ -111,8 +138,8 @@ src/liquid-glass/
   lib/optics.js               Snell's law + displacement/specular/magnify maps (browser canvas)
   lib/surfaces.js             bezel profiles
   lib/utils.js                useMv (number|MotionValue), Chromium detection
-  components/                 Magnifier, Searchbox, Switch, Slider, Button
-src/demo/                     the demo page (App.jsx + demo.css)
+  components/                 Magnifier, Searchbox, Switch, Slider, Button, Nav, ThemeSwitch
+src/demo/                     the demo page: top bar, light/dark theme, kit, playground
 ```
 
 ## Notes
