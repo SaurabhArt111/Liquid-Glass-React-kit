@@ -62,6 +62,7 @@ const stage = useRef(null);
 | `blur` | `0.2` | blur of the refracted backdrop (px) |
 | `refraction` / `restRefraction` | `1` / `0.8×` | strength while active / at rest (0–1) |
 | `specularOpacity`, `specularSaturation` | `0.5`, `6` | light rim + colour boost on it |
+| `fallbackBlur` | `3` (`0` if `magnify`) | blur in px where SVG refraction isn't available |
 | `magnify` / `restMagnify` | `0` / `0.5×` | zoom in the middle (0 = off) |
 | `tint` / `activeTint` | `0.05` / = `tint` | overlay alpha at rest / active |
 | `tintColor` | `"255,255,255"` | overlay colour as `"r,g,b"` |
@@ -122,10 +123,24 @@ arbitrary content should get a frosted backing so labels stay readable, e.g.
 
 ## Browser support
 
-`backdrop-filter: url(#svg-filter)` is implemented by **Chromium only** (Chrome, Edge,
-Arc, Brave, Opera). On Safari/Firefox the components automatically fall back to a
-frosted-glass `blur() saturate()` so they stay usable, but there is no refraction.
-`supportsSvgBackdrop()` is exported if you want to branch on it.
+| Engine | What you get |
+|---|---|
+| **Chromium** (Chrome, Edge, Arc, Brave, Opera, Android Chrome) | Full refraction: `backdrop-filter: url(#svg)` |
+| **WebKit** (Safari, and *every* browser on iPhone/iPad, incl. Chrome/Edge for iOS) | CSS-only glass look |
+| Firefox | CSS-only glass look |
+
+WebKit can't run SVG filters inside `backdrop-filter` yet (there is an open WebKit change for it,
+but it hasn't shipped), so true refraction/magnification is impossible on iOS today. Instead of
+a plain blur, the fallback builds the glass feel from: a light blur + saturation/brightness boost
+(no blur at all on magnifier lenses, so they stay sharp), layered inset rim lighting, a diagonal
+sheen, and the same specular-edge map used by the refraction path. All motion (drag, press
+inflate, jelly, springs) is JavaScript and is identical on every browser.
+
+- `?glass=css` in the URL forces the fallback on any browser (preview the iOS look on desktop);
+  `?glass=svg` forces refraction.
+- `fallbackBlur` prop (px) sets the fallback blur per component (default `3`, `0` for magnifiers;
+  `LiquidNav` uses `8` on the bar so labels stay readable).
+- `supportsSvgBackdrop()` and `isIOS()` are exported if you want to branch yourself.
 
 ## Files
 

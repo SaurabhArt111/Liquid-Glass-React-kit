@@ -215,3 +215,18 @@ export function getGlassMaps({
   }
   return entry;
 }
+
+const specCache = new Map();
+
+/** Just the specular rim (PNG data URL). Used by the CSS-only fallback. */
+export function getSpecularMap({ width, height, radius }) {
+  const dpr = getDevicePixelRatio();
+  const key = [width, height, radius, dpr].join("|");
+  let url = specCache.get(key);
+  if (!url) {
+    url = toDataUrl(drawSpecularMap(width, height, radius, dpr));
+    specCache.set(key, url);
+    if (specCache.size > 48) specCache.delete(specCache.keys().next().value);
+  }
+  return url;
+}

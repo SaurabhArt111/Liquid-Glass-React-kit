@@ -32,6 +32,14 @@
   pointer-events: none;
 }
 
+/* real specular-edge map, only used by the CSS-only fallback */
+.lg-spec {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
 .lg-content {
   position: absolute;
   inset: 0;

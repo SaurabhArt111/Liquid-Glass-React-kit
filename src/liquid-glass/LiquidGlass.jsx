@@ -8,7 +8,12 @@ import {
   useVelocity,
 } from "motion/react";
 import { LiquidFilter } from "./LiquidFilter.jsx";
-import { clamp, lerp, supportsSvgBackdrop } from "./lib/utils.js";
+import { getSpecularMap } from "./lib/optics.js";
+import { clamp, lerp, supportsSvgBackdrop, useMv } from "./lib/utils.js";
+
+// CSS-only "curved glass" sheen used where SVG refraction is unavailable (iOS/WebKit, Firefox)
+const SHEEN =
+  "linear-gradient(135deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.06) 34%, rgba(255,255,255,0) 58%, rgba(255,255,255,0.16) 100%)";
 
 /**
  * <LiquidGlass> — a refractive glass "lens" you can put anything inside.
@@ -41,6 +46,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     tintColor = "255,255,255", // overlay colour as "r,g,b"
     activeTint, // white overlay alpha while active (default = tint)
     shadow = 1, // shadow strength multiplier (0 = none)
+    fallbackBlur, // px of blur when SVG refraction is unavailable (default 3, or 0 for magnifiers)
     /* motion */
     restScale = 1,
     activeScale = 1.1,
@@ -68,6 +74,12 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   const bezel = Math.min(bezelWidth ?? Math.round(Math.min(width, height) * 0.3), r);
   const filterId = "lg" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const svgBackdrop = useMemo(supportsSvgBackdrop, []);
+  const specUrl = useMemo(
+    () => (svgBackdrop ? null : getSpecularMap({ width, height, radius: r })),
+    [svgBackdrop, width, height, r],
+  );
+  const specOpacityMv = useMv(specularOpacity);
+  const specOverlayOpacity = useTransform(() => clamp(specOpacityMv.get() * 0.9, 0, 1));
 
   /* ------------------------------ press state ----------------------------- */
   const pressed = useMotionValue(0);
@@ -146,6 +158,22 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   const boxShadow = useTransform(() => {
     const t = lift.get();
     const s = shadow;
+    if (!svgBackdrop) {
+      // Rim lighting for the CSS-only look: bright top-left / bottom-right edges,
+      // dark inner edges, soft drop shadow. (Same idea as a hand-built glass nav.)
+      return [
+        "inset 0 0 0 1px rgba(255,255,255,0.20)",
+        "inset 1.8px 3px 0 -2px rgba(255,255,255,0.85)",
+        "inset -2px -2px 0 -2px rgba(255,255,255,0.70)",
+        "inset -3px -8px 1px -6px rgba(255,255,255,0.50)",
+        `inset -0.3px -1px 4px 0 rgba(0,0,0,${0.12 * s})`,
+        `inset -1.5px 2.5px 0 -2px rgba(0,0,0,${0.2 * s})`,
+        `inset 0 3px 4px -2px rgba(0,0,0,${0.2 * s})`,
+        `inset 2px -6.5px 1px -4px rgba(0,0,0,${0.1 * s})`,
+        `0 ${lerp(1, 4, t)}px ${lerp(5, 12, t)}px rgba(0,0,0,${lerp(0.1, 0.16, t) * s})`,
+        `0 ${lerp(6, 16, t)}px ${lerp(16, 30, t)}px rgba(0,0,0,${lerp(0.08, 0.14, t) * s})`,
+      ].join(", ");
+    }
     const sx = 4 * t;
     const sy = lerp(4, 16, t);
     const blurPx = lerp(9, 24, t);
@@ -158,8 +186,11 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       `inset 0 0 0 1px rgba(255,255,255,0.14)`,
     ].join(", ");
   });
-  const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${svgBackdrop ? a : Math.max(a, 0.1)})`);
-  const backdropFilter = svgBackdrop ? `url(#${filterId})` : "blur(14px) saturate(1.7) brightness(1.06)";
+  const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${a})`);
+  const fbBlur = fallbackBlur ?? (magnify ? 0 : 3);
+  const backdropFilter = svgBackdrop
+    ? `url(#${filterId})`
+    : `${fbBlur ? `blur(${fbBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
 
   /* -------------------------------- dragging ------------------------------ */
   const dragProp = draggable === true ? true : draggable || false;
@@ -188,21 +219,23 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       }}
       {...rest}
     >
-      <LiquidFilter
-        id={filterId}
-        width={width}
-        height={height}
-        radius={r}
-        bezelWidth={bezel}
-        glassThickness={glassThickness}
-        refractiveIndex={refractiveIndex}
-        bezelType={bezelType}
-        blur={blur}
-        scaleRatio={refractionMv}
-        specularOpacity={specularOpacity}
-        specularSaturation={specularSaturation}
-        magnifyingScale={magnify ? magnifyMv : undefined}
-      />
+      {svgBackdrop && (
+        <LiquidFilter
+          id={filterId}
+          width={width}
+          height={height}
+          radius={r}
+          bezelWidth={bezel}
+          glassThickness={glassThickness}
+          refractiveIndex={refractiveIndex}
+          bezelType={bezelType}
+          blur={blur}
+          scaleRatio={refractionMv}
+          specularOpacity={specularOpacity}
+          specularSaturation={specularSaturation}
+          magnifyingScale={magnify ? magnifyMv : undefined}
+        />
+      )}
       <motion.div
         className="lg-glass"
         style={{
@@ -210,9 +243,16 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           backdropFilter,
           WebkitBackdropFilter: backdropFilter,
           backgroundColor,
+          backgroundImage: svgBackdrop ? undefined : SHEEN,
           boxShadow,
         }}
       />
+      {!svgBackdrop && (
+        <motion.div
+          className="lg-spec"
+          style={{ borderRadius: r, backgroundImage: `url(${specUrl})`, opacity: specOverlayOpacity }}
+        />
+      )}
       {children != null && (
         <div className="lg-content" style={{ borderRadius: r }}>
           {children}

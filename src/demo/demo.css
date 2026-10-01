@@ -62,6 +62,10 @@ code {
 }
 
 .notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 16px;
   padding: 12px 16px;
   border: 1px solid rgba(255, 200, 61, 0.35);
@@ -116,24 +120,18 @@ code {
   --lg-nav-accent: #a9c8ff;
 }
 
-.stage--aurora {
-  background-image: url("https://i.pinimg.com/736x/67/37/d6/6737d682860c15f13bb3c9208dad9ea8.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  /* background:
+.stage--aurora,
+.stage--stripes {
+  /* photo on top; gradients + colour underneath so the stage never goes blank if the image can't load */
+  background-image:
+    url("https://i.pinimg.com/736x/67/37/d6/6737d682860c15f13bb3c9208dad9ea8.jpg"),
     radial-gradient(55% 85% at 12% 15%, rgba(255, 95, 126, 0.95), transparent 62%),
     radial-gradient(50% 75% at 88% 25%, rgba(63, 107, 255, 0.95), transparent 62%),
-    radial-gradient(60% 60% at 58% 105%, rgba(255, 200, 61, 0.9), transparent 62%),
-    #15183a; */
-}
-
-.stage--stripes {
-  background-image: url("https://i.pinimg.com/736x/67/37/d6/6737d682860c15f13bb3c9208dad9ea8.jpg");
+    radial-gradient(60% 60% at 58% 105%, rgba(255, 200, 61, 0.9), transparent 62%);
+  background-color: #15183a;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  /* background: repeating-linear-gradient(90deg, #1b2456 0 26px, #ff6a5c 26px 34px, #0f1330 34px 60px, #ffc83d 60px 64px); */
 }
 
 .readout {
@@ -438,4 +436,20 @@ code {
   .hero {
     min-height: 460px;
   }
+}
+.notice-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: -4px -6px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.notice-close:hover {
+  background: rgba(255, 200, 61, 0.18);
 }

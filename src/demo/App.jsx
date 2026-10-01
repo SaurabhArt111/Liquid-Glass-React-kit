@@ -8,6 +8,7 @@ import {
   LiquidSlider,
   LiquidSwitch,
   LiquidThemeSwitch,
+  isIOS,
   supportsSvgBackdrop,
 } from "../liquid-glass";
 import { CompassIcon, HeartIcon, HomeIcon } from "./icons.jsx";
@@ -460,6 +461,7 @@ function Usage() {
 export default function App() {
   const supported = supportsSvgBackdrop();
   const [theme, setTheme] = useTheme();
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
   const lock = useRef(false);
   const [active, setActive] = useScrollSpy(SECTIONS.map((s) => s.id), lock);
 
@@ -478,10 +480,25 @@ export default function App() {
     <>
       <TopBar theme={theme} setTheme={setTheme} active={active} onGo={go} />
       <main className="page">
-        {!supported && (
-          <p className="notice">
-            Your browser doesn’t support SVG filters in <code>backdrop-filter</code> (Chromium only). You’re seeing the
-            frosted-glass fallback — open this in Chrome, Edge or Arc for full refraction.
+        {!supported && !noticeDismissed && (
+          <p className="notice" role="status">
+            <span>
+              {isIOS() ? (
+                <>
+                  On iPhone and iPad every browser uses Apple’s WebKit, which can’t run SVG refraction in{" "}
+                  <code>backdrop-filter</code> yet. You’re seeing the CSS glass look (rim light, sheen, light blur).
+                  Open this on desktop Chrome, Edge or Arc, or Android Chrome, for full refraction.
+                </>
+              ) : (
+                <>
+                  Your browser can’t run SVG refraction in <code>backdrop-filter</code> (Chromium only). You’re seeing
+                  the CSS glass look instead. Open this in Chrome, Edge or Arc for full refraction.
+                </>
+              )}
+            </span>
+            <button type="button" className="notice-close" aria-label="Dismiss" onClick={() => setNoticeDismissed(true)}>
+              ×
+            </button>
           </p>
         )}
         <Hero />

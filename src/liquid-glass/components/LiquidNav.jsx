@@ -79,6 +79,7 @@ export function LiquidNav({
       refraction={0.55}
       restRefraction={0.55}
       blur={2}
+      fallbackBlur={8} /* bar sits over content: frost it so labels stay readable */
       tint={0.1}
       activeTint={0.1}
       specularOpacity={0.5}
@@ -109,6 +110,7 @@ export function LiquidNav({
           glassThickness={50}
           refractiveIndex={1.5}
           blur={0.3}
+          fallbackBlur={1}
           refraction={0.8}
           restRefraction={0.45}
           specularOpacity={0.65}

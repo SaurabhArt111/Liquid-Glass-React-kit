@@ -11,4 +11,4 @@ export { LiquidNav } from "./components/LiquidNav.jsx";
 export { LiquidThemeSwitch } from "./components/LiquidThemeSwitch.jsx";
 export { SunIcon, MoonIcon } from "./components/icons.jsx";
 export { SURFACES } from "./lib/surfaces.js";
-export { supportsSvgBackdrop } from "./lib/utils.js";
+export { supportsSvgBackdrop, isIOS } from "./lib/utils.js";
