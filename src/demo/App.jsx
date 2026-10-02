@@ -1,17 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  LiquidBottomNav,
   LiquidButton,
   LiquidGlass,
   LiquidMagnifier,
   LiquidNav,
+  LiquidScrollEdge,
   LiquidSearchbox,
   LiquidSlider,
+  LiquidSplitLens,
   LiquidSwitch,
   LiquidThemeSwitch,
+  LiquidTopNav,
+  MoonIcon,
+  SunIcon,
   isIOS,
   supportsSvgBackdrop,
 } from "../liquid-glass";
-import { CompassIcon, HeartIcon, HomeIcon } from "./icons.jsx";
+import {
+  BookIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronUpIcon,
+  CompassIcon,
+  GridIcon,
+  HeartIcon,
+  HomeIcon,
+  LayersIcon,
+  MusicIcon,
+  RadioIcon,
+  SearchIcon,
+  SlidersIcon,
+} from "./icons.jsx";
 
 /* --------------------------------- helpers --------------------------------- */
 
@@ -80,27 +100,27 @@ function TopBar({ theme, setTheme, active, onGo }) {
   const backing =
     theme === "light"
       ? {
-          tint: 0.1,
-          activeTint: 0.16,
-          tintColor: "255,255,255",
-          glassThickness: 90,
-          refraction: 0.9,
-          restRefraction: 0.72,
-          blur: 0.4,
-          specularOpacity: 0.65,
-          specularSaturation: 8,
-        }
+        tint: 0.1,
+        activeTint: 0.16,
+        tintColor: "255,255,255",
+        glassThickness: 90,
+        refraction: 0.9,
+        restRefraction: 0.72,
+        blur: 0.4,
+        specularOpacity: 0.65,
+        specularSaturation: 8,
+      }
       : {
-          tint: 0.08,
-          activeTint: 0.14,
-          tintColor: "12,16,40",
-          glassThickness: 90,
-          refraction: 0.9,
-          restRefraction: 0.72,
-          blur: 0.4,
-          specularOpacity: 0.65,
-          specularSaturation: 8,
-        };
+        tint: 0.08,
+        activeTint: 0.14,
+        tintColor: "12,16,40",
+        glassThickness: 90,
+        refraction: 0.9,
+        restRefraction: 0.72,
+        blur: 0.4,
+        specularOpacity: 0.65,
+        specularSaturation: 8,
+      };
 
   return (
     <div className="topbar">
@@ -115,6 +135,35 @@ function TopBar({ theme, setTheme, active, onGo }) {
         {...backing}
       />
       <LiquidThemeSwitch theme={theme} onChange={setTheme} itemWidth={themeItem} height={height} padding={pad} {...backing} />
+    </div>
+  );
+}
+
+const DOCK_ICONS = { kit: <GridIcon />, any: <LayersIcon />, play: <SlidersIcon />, usage: <BookIcon /> };
+
+/** On phones the page navigation becomes a real bottom tab bar (+ a theme button). */
+function MobileDock({ theme, setTheme, active, onGo }) {
+  const vw = useViewportWidth();
+  const gap = 10;
+  const size = 56;
+  const itemWidth = Math.max(44, Math.min(72, Math.floor((vw - 24 - gap - size - 12) / SECTIONS.length)));
+  return (
+    <div className="dock">
+      <LiquidBottomNav
+        label="Sections"
+        items={SECTIONS.map((s) => ({ value: s.id, label: s.short === "Docs" ? "Docs" : s.short, icon: DOCK_ICONS[s.id] }))}
+        value={active}
+        onChange={onGo}
+        itemWidth={itemWidth}
+        height={size + 8}
+        gap={gap}
+        actionSize={size + 8}
+        action={{
+          label: theme === "light" ? "Switch to dark theme" : "Switch to light theme",
+          icon: theme === "light" ? <MoonIcon width={26} height={26} /> : <SunIcon width={26} height={26} />,
+          onClick: () => setTheme(theme === "light" ? "dark" : "light"),
+        }}
+      />
     </div>
   );
 }
@@ -134,9 +183,9 @@ const Code = ({ children }) => (
   </pre>
 );
 
-function Card({ title, text, code, children }) {
+function Card({ title, text, code, children, wide }) {
   return (
-    <article className="card">
+    <article className={`card${wide ? " card--wide" : ""}`}>
       <header>
         <h3>{title}</h3>
         <p>{text}</p>
@@ -282,6 +331,91 @@ function ThemeCard({ theme, setTheme }) {
   );
 }
 
+function SplitCard() {
+  const vw = useViewportWidth();
+  const width = Math.min(760, Math.max(560, vw - 0));
+  return (
+    <Card
+      wide
+      title="Split lens"
+      text="Two lenses refracted as one piece of glass. Drag them together and a liquid neck forms; pull them apart and it pinches off. This is the morph behind Liquid Glass tab bars."
+      code={`<LiquidSplitLens width={760} height={280} />`}
+    >
+      <Stage variant="stripes" className="tall">
+        <LiquidSplitLens width={width} height={300} />
+      </Stage>
+    </Card>
+  );
+}
+
+const TILES = [
+  { t: "Summer Vibes", s: "Apple Music Summertime", bg: "linear-gradient(135deg,#ff5f7e,#ffb347)" },
+  { t: "Viral Rewind", s: "Trending now", bg: "conic-gradient(from 200deg at 30% 60%,#3f6bff,#8d4dff,#18d6c9,#3f6bff)" },
+  { t: "Night Drive", s: "Synthwave essentials", bg: "linear-gradient(160deg,#0f1330,#6a2cff 55%,#ff4fa3)" },
+  { t: "Green Room", s: "Focus & flow", bg: "linear-gradient(135deg,#0b8f4d,#b6f24b)" },
+  { t: "Golden Hour", s: "Sunset sessions", bg: "linear-gradient(200deg,#ffd166,#ff6a5c 60%,#7a1fa2)" },
+];
+
+const PHONE_TABS = [
+  { value: "home", label: "Home", icon: <HomeIcon /> },
+  { value: "new", label: "New", icon: <GridIcon /> },
+  { value: "radio", label: "Radio", icon: <RadioIcon /> },
+  { value: "library", label: "Library", icon: <MusicIcon /> },
+];
+
+function PhoneCard() {
+  const [tab, setTab] = useState("home");
+  const [n, setN] = useState(1);
+  return (
+    <Card
+      wide
+      title="Mobile bars"
+      text="A top bar, a tab bar with a detached action button, and the scroll-edge fade, all floating over scrolling content. Scroll the phone; press or pull the search button and a liquid neck joins it to the tab bar."
+      code={`<LiquidTopNav title="Thailand Trip" leading={back} trailing={[up, down]} />
+<LiquidBottomNav items={tabs} value={tab} onChange={setTab} action={search} />
+<LiquidScrollEdge position="top" />`}
+    >
+      <Stage variant="grid" className="phone-stage">
+        <div className="phone">
+          <div className="phone-scroll" tabIndex={0} aria-label="Scrollable demo content">
+            {TILES.concat(TILES).map((t, i) => (
+              <div className="tile" key={i} style={{ background: t.bg }}>
+                <strong>{t.t}</strong>
+                <span>{t.s}</span>
+              </div>
+            ))}
+          </div>
+          <LiquidScrollEdge position="top" height={110} />
+          <LiquidScrollEdge position="bottom" height={130} />
+          <div className="phone-top">
+            <LiquidTopNav
+              width={316}
+              height={44}
+              title={tab === "home" ? "Home" : tab[0].toUpperCase() + tab.slice(1)}
+              leading={{ icon: <ChevronLeftIcon />, label: "Back", onClick: () => setN(1) }}
+              trailing={[
+                { icon: <ChevronDownIcon />, label: "Next", onClick: () => setN((v) => v + 1) },
+                { icon: <ChevronUpIcon />, label: "Previous", onClick: () => setN((v) => Math.max(1, v - 1)) },
+              ]}
+            />
+          </div>
+          <div className="phone-bottom">
+            <LiquidBottomNav
+              items={PHONE_TABS}
+              value={tab}
+              onChange={setTab}
+              itemWidth={55}
+              height={62}
+              gap={10}
+              action={{ icon: <SearchIcon />, label: "Search", onClick: () => setTab("new") }}
+            />
+          </div>
+        </div>
+      </Stage>
+    </Card>
+  );
+}
+
 /* ------------------------------- any div ---------------------------------- */
 
 function AnyDiv() {
@@ -356,7 +490,11 @@ const DEFAULTS = {
   specularSaturation: 6,
   magnify: 0,
   tint: 0.04,
+  dispersion: 0.04,
+  glow: 0.5,
+  dim: 0,
   bezelType: "convex",
+  variant: "regular",
 };
 
 const CONTROLS = [
@@ -372,6 +510,9 @@ const CONTROLS = [
   ["specularSaturation", 0, 20, 1],
   ["magnify", 0, 80, 1],
   ["tint", 0, 0.5, 0.01],
+  ["dispersion", 0, 0.15, 0.005],
+  ["glow", 0, 1, 0.05],
+  ["dim", 0, 0.6, 0.02],
 ];
 
 function Playground() {
@@ -408,11 +549,18 @@ function Playground() {
               <option value="lip">lip</option>
             </select>
           </label>
+          <label className="ctl">
+            <span>variant</span>
+            <select value={p.variant} onChange={(e) => set("variant", e.target.value)}>
+              <option value="regular">regular</option>
+              <option value="clear">clear</option>
+            </select>
+          </label>
           {CONTROLS.map(([k, lo, hi, st]) => (
             <label className="ctl" key={k}>
               <span>{k}</span>
               <input type="range" min={lo} max={hi} step={st} value={p[k]} onChange={(e) => set(k, parseFloat(e.target.value))} />
-              <output>{Number.isInteger(st) ? p[k] : p[k].toFixed(2)}</output>
+              <output>{Number.isInteger(st) ? p[k] : p[k].toFixed(st < 0.01 ? 3 : 2)}</output>
             </label>
           ))}
           <label className="toggle">
@@ -460,6 +608,7 @@ function Usage() {
 
 export default function App() {
   const supported = supportsSvgBackdrop();
+  const vw = useViewportWidth();
   const [theme, setTheme] = useTheme();
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const lock = useRef(false);
@@ -478,7 +627,11 @@ export default function App() {
 
   return (
     <>
-      <TopBar theme={theme} setTheme={setTheme} active={active} onGo={go} />
+      {vw < 640 ? (
+        <MobileDock theme={theme} setTheme={setTheme} active={active} onGo={go} />
+      ) : (
+        <TopBar theme={theme} setTheme={setTheme} active={active} onGo={go} />
+      )}
       <main className="page">
         {!supported && !noticeDismissed && (
           <p className="notice" role="status">
@@ -517,6 +670,8 @@ export default function App() {
             <ButtonCard />
             <NavCard />
             <ThemeCard theme={theme} setTheme={setTheme} />
+            <SplitCard />
+            <PhoneCard />
           </div>
         </section>
 

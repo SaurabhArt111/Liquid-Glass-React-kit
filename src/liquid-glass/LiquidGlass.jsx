@@ -1,14 +1,8 @@
-import { forwardRef, useEffect, useId, useMemo, useRef } from "react";
-import {
-  isMotionValue,
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  useVelocity,
-} from "motion/react";
+import { forwardRef, useId, useMemo } from "react";
+import { motion, useMotionValue, useTransform } from "motion/react";
 import { LiquidFilter } from "./LiquidFilter.jsx";
 import { getSpecularMap } from "./lib/optics.js";
+import { useLiquidMotion } from "./lib/useLiquidMotion.js";
 import { clamp, lerp, supportsSvgBackdrop, useMv } from "./lib/utils.js";
 
 // CSS-only "curved glass" sheen used where SVG refraction is unavailable (iOS/WebKit, Firefox)
@@ -34,15 +28,19 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     glassThickness = 70,
     refractiveIndex = 1.5,
     bezelType = "convex", // 'convex' | 'circle' | 'concave' | 'lip'
-    blur = 0.2,
+    variant = "regular", // 'regular' | 'clear' (clear = see-through media glass; pair with `dim`)
+    dim = 0, // 0..1 dark layer under the glass, keeps content legible on clear glass
+    dispersion = 0.04, // chromatic fringe at the rim (0 = off)
+    glow = 0.5, // "illuminates from within" at the touch point (0 = off)
+    blur,
     refraction = 1, // 0..1 — strength while active
     restRefraction, // strength at rest (default 80 % of `refraction`)
-    specularOpacity = 0.5,
+    specularOpacity,
     specularSaturation = 6,
     magnify = 0, // zoom strength while active (0 = off)
     restMagnify, // zoom at rest (default 50 % of `magnify`)
     /* surface */
-    tint = 0.05, // overlay alpha at rest
+    tint, // overlay alpha at rest (default 0.05, clear: 0.01)
     tintColor = "255,255,255", // overlay colour as "r,g,b"
     activeTint, // white overlay alpha while active (default = tint)
     shadow = 1, // shadow strength multiplier (0 = none)
@@ -64,6 +62,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     style,
     children,
     onPointerDown,
+    onPointerMove,
     onDragStart,
     onDragEnd,
     ...rest
@@ -78,86 +77,63 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     () => (svgBackdrop ? null : getSpecularMap({ width, height, radius: r })),
     [svgBackdrop, width, height, r],
   );
-  const specOpacityMv = useMv(specularOpacity);
+  const specOpacityMv = useMv(specularOpacity ?? 0.5);
   const specOverlayOpacity = useTransform(() => clamp(specOpacityMv.get() * 0.9, 0, 1));
 
-  /* ------------------------------ press state ----------------------------- */
-  const pressed = useMotionValue(0);
-  const forceMv = useMotionValue(0);
-  useEffect(() => {
-    if (!isMotionValue(active)) forceMv.set(active ? 1 : 0);
-  }, [active, forceMv]);
-  const forced = isMotionValue(active) ? active : forceMv;
+  const clear = variant === "clear";
+  const tintV = tint ?? (clear ? 0.01 : 0.05);
+  const blurV = blur ?? (clear ? 0 : 0.2);
+  const specV = specularOpacity ?? (clear ? 0.7 : 0.5);
 
-  const onPressChangeRef = useRef(onPressChange);
-  onPressChangeRef.current = onPressChange;
-  const setPressed = (v) => {
-    if (pressed.get() === v) return;
-    pressed.set(v);
-    onPressChangeRef.current?.(!!v);
-  };
-  useEffect(() => {
-    const release = () => {
-      if (pressed.get()) {
-        pressed.set(0);
-        onPressChangeRef.current?.(false);
-      }
-    };
-    window.addEventListener("pointerup", release);
-    window.addEventListener("pointercancel", release);
-    return () => {
-      window.removeEventListener("pointerup", release);
-      window.removeEventListener("pointercancel", release);
-    };
-  }, [pressed]);
-
-  // NOTE: read every MotionValue unconditionally inside useTransform(() => …)
-  // so all dependencies are tracked.
-  const activeMv = useTransform(() => {
-    const f = Number(forced.get());
-    const p = pressed.get();
-    return f || p ? 1 : 0;
+  const {
+    pressed,
+    setPressed,
+    refractionMv,
+    magnifyMv,
+    tintMv,
+    lift,
+    glowAmt,
+    x,
+    y,
+    scaleX,
+    scaleY,
+  } = useLiquidMotion({
+    restScale,
+    activeScale,
+    refraction,
+    restRefraction,
+    magnify,
+    restMagnify,
+    tint: tintV,
+    activeTint,
+    jelly,
+    active,
+    onPressChange,
+    x: xProp,
+    y: yProp,
   });
 
-  /* ------------------------------- springs -------------------------------- */
-  const bouncy = { stiffness: 340, damping: 20 };
-  const soft = { stiffness: 250, damping: 14 };
-  const snappy = { stiffness: 2000, damping: 80 };
-
-  const baseScale = useSpring(useTransform(activeMv, (a) => lerp(restScale, activeScale, a)), bouncy);
-  const refractionMv = useSpring(
-    useTransform(activeMv, (a) => lerp(restRefraction ?? refraction * 0.8, refraction, a)),
-    soft,
+  // touch glow: a soft radial light that follows the finger inside the glass
+  const gx = useMotionValue(50);
+  const gy = useMotionValue(50);
+  const glowBg = useTransform(
+    () =>
+      `radial-gradient(circle at ${gx.get()}% ${gy.get()}%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.32) 26%, rgba(255,255,255,0) 64%)`,
   );
-  const magnifyMv = useSpring(
-    useTransform(activeMv, (a) => lerp(restMagnify ?? magnify * 0.5, magnify, a)),
-    soft,
-  );
-  const tintMv = useSpring(useTransform(activeMv, (a) => lerp(tint, activeTint ?? tint, a)), snappy);
-  const lift = useSpring(activeMv, { stiffness: 340, damping: 30 });
-
-  /* -------------------------------- jelly --------------------------------- */
-  const ownX = useMotionValue(0);
-  const ownY = useMotionValue(0);
-  const x = xProp ?? ownX;
-  const y = yProp ?? ownY;
-  const vx = useVelocity(x);
-  const vy = useVelocity(y);
-  const stretch = useSpring(
-    useTransform(() => {
-      const kx = Math.min(0.3, Math.abs(vx.get()) / 5000);
-      const ky = Math.min(0.3, Math.abs(vy.get()) / 5000);
-      return kx - ky;
-    }),
-    { stiffness: 400, damping: 16 }, // under-damped → wobbles when you stop
-  );
-  const scaleX = useTransform(() => baseScale.get() * (1 + clamp(jelly * stretch.get(), -0.4, 0.4)));
-  const scaleY = useTransform(() => baseScale.get() * (1 - clamp(jelly * stretch.get(), -0.4, 0.4)));
+  const glowOpacity = useTransform(() => clamp(glowAmt.get() * glow * 0.65, 0, 1));
+  const trackGlow = (e) => {
+    if (!glow) return;
+    const rc = e.currentTarget.getBoundingClientRect();
+    gx.set(((e.clientX - rc.left) / rc.width) * 100);
+    gy.set(((e.clientY - rc.top) / rc.height) * 100);
+  };
 
   /* ------------------------------ appearance ------------------------------ */
   const boxShadow = useTransform(() => {
     const t = lift.get();
     const s = shadow;
+    const g = clamp(glowAmt.get() * glow, 0, 1);
+    const bloom = g > 0.01 ? `, 0 0 ${lerp(8, 30, g)}px ${lerp(0, 3, g)}px rgba(255,255,255,${0.3 * g})` : "";
     if (!svgBackdrop) {
       // Rim lighting for the CSS-only look: bright top-left / bottom-right edges,
       // dark inner edges, soft drop shadow. (Same idea as a hand-built glass nav.)
@@ -172,7 +148,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
         `inset 2px -6.5px 1px -4px rgba(0,0,0,${0.1 * s})`,
         `0 ${lerp(1, 4, t)}px ${lerp(5, 12, t)}px rgba(0,0,0,${lerp(0.1, 0.16, t) * s})`,
         `0 ${lerp(6, 16, t)}px ${lerp(16, 30, t)}px rgba(0,0,0,${lerp(0.08, 0.14, t) * s})`,
-      ].join(", ");
+      ].join(", ") + bloom;
     }
     const sx = 4 * t;
     const sy = lerp(4, 16, t);
@@ -184,7 +160,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       `inset ${sx / 2}px ${sy / 2}px 24px rgba(0,0,0,${ia * 0.6})`,
       `inset ${-sx / 2}px ${-sy / 2}px 24px rgba(255,255,255,${ia * 0.7})`,
       `inset 0 0 0 1px rgba(255,255,255,0.14)`,
-    ].join(", ");
+    ].join(", ") + bloom;
   });
   const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${a})`);
   const fbBlur = fallbackBlur ?? (magnify ? 0 : 3);
@@ -206,8 +182,13 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       dragElastic={dragElastic}
       dragMomentum={false}
       onPointerDown={(e) => {
+        trackGlow(e);
         setPressed(1);
         onPointerDown?.(e);
+      }}
+      onPointerMove={(e) => {
+        if (pressed.get()) trackGlow(e);
+        onPointerMove?.(e);
       }}
       onDragStart={(...a) => {
         setPressed(1);
@@ -229,13 +210,15 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           glassThickness={glassThickness}
           refractiveIndex={refractiveIndex}
           bezelType={bezelType}
-          blur={blur}
+          blur={blurV}
+          dispersion={dispersion}
           scaleRatio={refractionMv}
-          specularOpacity={specularOpacity}
+          specularOpacity={specV}
           specularSaturation={specularSaturation}
           magnifyingScale={magnify ? magnifyMv : undefined}
         />
       )}
+      {dim > 0 && <div className="lg-dim" style={{ borderRadius: r, background: `rgba(0,0,0,${dim})` }} />}
       <motion.div
         className="lg-glass"
         style={{
@@ -253,6 +236,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           style={{ borderRadius: r, backgroundImage: `url(${specUrl})`, opacity: specOverlayOpacity }}
         />
       )}
+      {glow > 0 && <motion.div className="lg-glow" style={{ borderRadius: r, backgroundImage: glowBg, opacity: glowOpacity }} />}
       {children != null && (
         <div className="lg-content" style={{ borderRadius: r }}>
           {children}

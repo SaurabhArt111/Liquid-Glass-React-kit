@@ -32,6 +32,13 @@
   pointer-events: none;
 }
 
+.lg-dim,
+.lg-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* real specular-edge map, only used by the CSS-only fallback */
 .lg-spec {
   position: absolute;
@@ -195,7 +202,7 @@
 }
 .lg-nav-item:hover:not(.is-active) {
   opacity: 1;
-  color: var(--lg-nav-accent, #7fb0ff);
+  color: var(--lg-nav-accent);
 }
 .lg-nav-item:hover:not(.is-active) svg {
   scale: 1.2;
@@ -209,4 +216,155 @@
 }
 .lg-nav-item:focus-visible {
   box-shadow: 0 0 0 2px var(--lg-nav-accent, #7fb0ff);
+}
+
+/* --------------------------------- Merge / blobs -------------------------------- */
+
+.lg-merge {
+  position: relative;
+  flex: none;
+  pointer-events: none; /* click-through; only blobs take input */
+}
+.lg-merge-glass,
+.lg-merge-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.lg-merge-shade {
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.06) 42%, rgba(111, 155, 255, 0.18) 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.55), inset -2px -2px 10px rgba(14, 24, 58, 0.12), 0 10px 28px rgba(18, 31, 64, 0.14);
+}
+.lg-merge-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 45%, rgba(145, 171, 255, 0.1) 100%);
+}
+.lg-blob {
+  position: absolute;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+/* ------------------------------ Mobile bars / tab bar ----------------------------- */
+
+.lg-blob-content {
+  overflow: visible;
+}
+
+/* tab bar: icon above label, accent colour when selected */
+.lg-tabbar {
+  --lg-nav-fg: var(--lg-tab-fg, #fff);
+}
+.lg-tabbar .lg-nav-item {
+  gap: 3px;
+  font-size: 11px;
+}
+.lg-tabbar .lg-nav-item.is-active {
+  color: var(--lg-tab-accent);
+}
+.lg-tabbar .lg-nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+.lg-tab-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--lg-tab-fg, #fff);
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-tab-action:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-tab-accent, #ff3b6b);
+}
+
+.lg-iconbutton {
+  color: var(--lg-nav-fg, #fff);
+}
+
+/* top bar */
+.lg-topnav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--lg-nav-fg, #fff);
+}
+.lg-topnav-side {
+  display: flex;
+  min-width: 0;
+}
+.lg-topnav-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  max-width: 50%;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.lg-topnav-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  color: var(--lg-nav-fg, #fff);
+}
+.lg-topnav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-topnav-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-nav-accent, #7fb0ff);
+}
+
+/* scroll edge: blur + fade under floating bars */
+.lg-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(var(--lg-edge-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--lg-edge-blur, 8px));
+}
+.lg-edge--top {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.32), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent);
+}
+.lg-edge--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.32), transparent);
+  -webkit-mask-image: linear-gradient(to top, #000 25%, transparent);
+  mask-image: linear-gradient(to top, #000 25%, transparent);
 }

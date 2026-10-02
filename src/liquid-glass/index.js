@@ -2,12 +2,18 @@ import "./liquid-glass.css";
 
 export { LiquidGlass } from "./LiquidGlass.jsx";
 export { LiquidFilter } from "./LiquidFilter.jsx";
+export { LiquidMerge, LiquidBlob } from "./LiquidMerge.jsx";
 export { LiquidMagnifier } from "./components/LiquidMagnifier.jsx";
 export { LiquidSearchbox } from "./components/LiquidSearchbox.jsx";
 export { LiquidSwitch } from "./components/LiquidSwitch.jsx";
 export { LiquidSlider } from "./components/LiquidSlider.jsx";
 export { LiquidButton } from "./components/LiquidButton.jsx";
+export { LiquidSplitLens } from "./components/LiquidSplitLens.jsx";
 export { LiquidNav } from "./components/LiquidNav.jsx";
+export { LiquidBottomNav } from "./components/LiquidBottomNav.jsx";
+export { LiquidTopNav } from "./components/LiquidTopNav.jsx";
+export { LiquidIconButton } from "./components/LiquidIconButton.jsx";
+export { LiquidScrollEdge } from "./components/LiquidScrollEdge.jsx";
 export { LiquidThemeSwitch } from "./components/LiquidThemeSwitch.jsx";
 export { SunIcon, MoonIcon } from "./components/icons.jsx";
 export { SURFACES } from "./lib/surfaces.js";
