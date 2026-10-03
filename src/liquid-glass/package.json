@@ -1,0 +1,29 @@
+{
+  "name": "liquid-glass-react",
+  "version": "1.0.0",
+  "description": "Liquid Glass components for React: refraction through SVG backdrop filters, merging lenses, nav bars, switches, sliders. Plain JavaScript, plain CSS.",
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./styles.css": "./styles/liquid-glass.css"
+  },
+  "sideEffects": [
+    "./index.js",
+    "**/*.css"
+  ],
+  "peerDependencies": {
+    "motion": ">=12",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "keywords": [
+    "react",
+    "liquid-glass",
+    "glassmorphism",
+    "svg-filter",
+    "refraction",
+    "motion"
+  ]
+}

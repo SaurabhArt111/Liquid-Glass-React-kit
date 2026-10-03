@@ -1,22 +1,27 @@
-import { LiquidNav } from "./LiquidNav.jsx";
+import { LiquidSwitch } from "./LiquidSwitch.jsx";
 import { MoonIcon, SunIcon } from "./icons.jsx";
 
-const ITEMS = [
-  { value: "light", icon: <SunIcon width={26} height={26} />, ariaLabel: "Light theme" },
-  { value: "dark", icon: <MoonIcon width={26} height={26} />, ariaLabel: "Dark theme" },
-];
-
-/** Sun / moon glass pill. Controlled: `theme` = "light" | "dark". */
-export function LiquidThemeSwitch({ theme, onChange, itemWidth = 60, height = 56, padding = 5, ...props }) {
+/**
+ * Sun / moon theme switch: a real <LiquidSwitch> (role="switch"). Tap it or drag
+ * the glass thumb; the thumb is see-through so the active icon shows through the lens.
+ *
+ *   <LiquidThemeSwitch theme={theme} onChange={setTheme} />   // theme: "light" | "dark"
+ */
+export function LiquidThemeSwitch({ theme, onChange, height = 56, ...props }) {
+  const icon = Math.round(height * 0.46);
   return (
-    <LiquidNav
-      label="Theme"
-      items={ITEMS}
-      value={theme}
-      onChange={onChange}
-      itemWidth={itemWidth}
+    <LiquidSwitch
+      label="Dark theme"
       height={height}
-      padding={padding}
+      checked={theme === "dark"}
+      onChange={(dark) => onChange?.(dark ? "dark" : "light")}
+      offColor="#7fa6ff"
+      onColor="#262b66"
+      offAlpha="E6"
+      onAlpha="F2"
+      thumbTint={0.22}
+      startIcon={<SunIcon width={icon} height={icon} />}
+      endIcon={<MoonIcon width={icon} height={icon} />}
       {...props}
     />
   );

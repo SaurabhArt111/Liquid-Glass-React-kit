@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 import { clamp } from "../lib/utils.js";
 import { NavTrack, useNavSelection } from "./NavTrack.jsx";
 

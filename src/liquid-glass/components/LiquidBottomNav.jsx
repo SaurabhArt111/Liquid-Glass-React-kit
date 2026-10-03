@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMotionValue, useSpring } from "motion/react";
-import { LiquidBlob, LiquidMerge } from "../LiquidMerge.jsx";
+import { LiquidBlob, LiquidMerge } from "../core/LiquidMerge.jsx";
 import { NavTrack, useNavSelection } from "./NavTrack.jsx";
 
 const BLEED = 24; // room around the glass for the drop shadow and the inflating lens
@@ -14,7 +14,7 @@ const PULL = 40; // how far the action button can be pulled (extra room is added
  * pinches off when you let go.
  *
  * items:  [{ value, label, icon }]
- * action: { icon, label, onClick }
+ * action: { icon, label, onClick, active? }   (active → shows the pressed look, e.g. its page is open)
  * Layout box = bar + gap + button (the shadow bleed is cancelled with negative margins).
  */
 export function LiquidBottomNav({
@@ -82,6 +82,7 @@ export function LiquidBottomNav({
           restScale={1}
           activeScale={1.1}
           jelly={1}
+          active={!!action.active}
           draggable={elastic}
           dragSnapToOrigin
           dragConstraints={{ left: -PULL, right: PULL, top: -PULL, bottom: PULL }}

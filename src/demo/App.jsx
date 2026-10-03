@@ -26,12 +26,15 @@ import {
   GridIcon,
   HeartIcon,
   HomeIcon,
+  InfoIcon,
   LayersIcon,
   MusicIcon,
   RadioIcon,
   SearchIcon,
   SlidersIcon,
 } from "./icons.jsx";
+import { About } from "./About.jsx";
+import { SwipePhone } from "./SwipeDemo.jsx";
 
 /* --------------------------------- helpers --------------------------------- */
 
@@ -43,6 +46,12 @@ function useViewportWidth() {
     return () => window.removeEventListener("resize", on);
   }, []);
   return w;
+}
+
+/** Inner width of the phone mocks: 328px, or less on narrow screens. */
+function usePhoneWidth() {
+  const vw = useViewportWidth();
+  return Math.max(260, Math.min(328, vw - 76));
 }
 
 function useTheme() {
@@ -59,16 +68,38 @@ function useTheme() {
 }
 
 const SECTIONS = [
+  { id: "home", long: "Home", short: "Home" },
   { id: "kit", long: "Kit", short: "Kit" },
+  { id: "split", long: "Split lens", short: "Split" },
+  { id: "swipe", long: "Swipe", short: "Swipe" },
   { id: "any", long: "Any div", short: "Div" },
   { id: "play", long: "Playground", short: "Play" },
   { id: "usage", long: "Usage", short: "Docs" },
 ];
+const NAV_ITEMS = [...SECTIONS, { id: "about", long: "About", short: "About" }];
+
+/** Tiny hash router: "#/" is the home page, "#/about" the About page. */
+function useRoute() {
+  const read = () => (window.location.hash.startsWith("#/about") ? "about" : "home");
+  const [route, setRoute] = useState(read);
+  useEffect(() => {
+    const on = () => setRoute(read());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  const navigate = (to) => {
+    const hash = to === "about" ? "#/about" : "#/";
+    if (window.location.hash === hash) setRoute(to);
+    else window.location.hash = hash;
+  };
+  return [route, navigate];
+}
 
 /** Highlights the section under the middle of the viewport; `lock` pauses it during click-scrolls. */
-function useScrollSpy(ids, lock) {
+function useScrollSpy(ids, lock, enabled) {
   const [active, setActive] = useState(ids[0]);
   useEffect(() => {
+    if (!enabled) return;
     const els = ids.map((id) => document.getElementById(id)).filter(Boolean);
     const io = new IntersectionObserver(
       (entries) => {
@@ -81,87 +112,94 @@ function useScrollSpy(ids, lock) {
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
   return [active, setActive];
 }
 
 /* ---------------------------------- top bar --------------------------------- */
 
-function TopBar({ theme, setTheme, active, onGo }) {
+function TopBar({ theme, setTheme, value, onGo }) {
   const vw = useViewportWidth();
-  const compact = vw < 640;
-  const height = compact ? 52 : 56;
   const pad = 5;
-  const themeItem = compact ? 44 : 60;
-  const themeW = themeItem * 2 + pad * 2;
-  const navItem = Math.max(40, Math.min(96, Math.floor((vw - 24 - 8 - themeW - pad * 2) / SECTIONS.length)));
+  const height = 56;
+  const switchH = 44;
+  const themeW = Math.round(switchH * 2.388);
+  const navItem = Math.max(40, Math.min(92, Math.floor((vw - 24 - 8 - themeW - pad * 2) / NAV_ITEMS.length)));
   const long = navItem >= 84;
   // Keep the surface translucent enough for the backdrop and refraction to read.
   const backing =
     theme === "light"
       ? {
-        tint: 0.1,
-        activeTint: 0.16,
-        tintColor: "255,255,255",
-        glassThickness: 90,
-        refraction: 0.9,
-        restRefraction: 0.72,
-        blur: 0.4,
-        specularOpacity: 0.65,
-        specularSaturation: 8,
-      }
+          tint: 0.1,
+          activeTint: 0.16,
+          tintColor: "255,255,255",
+          glassThickness: 90,
+          refraction: 0.9,
+          restRefraction: 0.72,
+          blur: 0.4,
+          specularOpacity: 0.65,
+          specularSaturation: 8,
+        }
       : {
-        tint: 0.08,
-        activeTint: 0.14,
-        tintColor: "12,16,40",
-        glassThickness: 90,
-        refraction: 0.9,
-        restRefraction: 0.72,
-        blur: 0.4,
-        specularOpacity: 0.65,
-        specularSaturation: 8,
-      };
+          tint: 0.08,
+          activeTint: 0.14,
+          tintColor: "12,16,40",
+          glassThickness: 90,
+          refraction: 0.9,
+          restRefraction: 0.72,
+          blur: 0.4,
+          specularOpacity: 0.65,
+          specularSaturation: 8,
+        };
 
   return (
     <div className="topbar">
       <LiquidNav
-        label="Sections"
+        label="Pages"
         height={height}
         padding={pad}
         itemWidth={navItem}
-        items={SECTIONS.map((s) => ({ value: s.id, label: long ? s.long : s.short, href: "#" + s.id }))}
-        value={active}
+        items={NAV_ITEMS.map((s) => ({ value: s.id, label: long ? s.long : s.short, href: s.id === "about" ? "#/about" : "#/" }))}
+        value={value}
         onChange={onGo}
         {...backing}
       />
-      <LiquidThemeSwitch theme={theme} onChange={setTheme} itemWidth={themeItem} height={height} padding={pad} {...backing} />
+      <LiquidThemeSwitch theme={theme} onChange={setTheme} height={switchH} />
     </div>
   );
 }
 
-const DOCK_ICONS = { kit: <GridIcon />, any: <LayersIcon />, play: <SlidersIcon />, usage: <BookIcon /> };
+const DOCK_ITEMS = [
+  { value: "home", label: "Home", icon: <HomeIcon /> },
+  { value: "kit", label: "Kit", icon: <GridIcon /> },
+  { value: "split", label: "Split", icon: <LayersIcon /> },
+  { value: "lab", label: "Lab", icon: <SlidersIcon /> },
+  { value: "usage", label: "Docs", icon: <BookIcon /> },
+];
+const DOCK_OF = { home: "home", kit: "kit", split: "split", swipe: "split", any: "lab", play: "lab", usage: "usage" };
 
-/** On phones the page navigation becomes a real bottom tab bar (+ a theme button). */
-function MobileDock({ theme, setTheme, active, onGo }) {
+/** On phones the page navigation becomes a real bottom tab bar; About is its detached action button. */
+function MobileDock({ active, route, onGo }) {
   const vw = useViewportWidth();
   const gap = 10;
-  const size = 56;
-  const itemWidth = Math.max(44, Math.min(72, Math.floor((vw - 24 - gap - size - 12) / SECTIONS.length)));
+  const size = 60;
+  const itemWidth = Math.max(44, Math.min(64, Math.floor((vw - 24 - gap - size - 12) / DOCK_ITEMS.length)));
   return (
     <div className="dock">
       <LiquidBottomNav
         label="Sections"
-        items={SECTIONS.map((s) => ({ value: s.id, label: s.short === "Docs" ? "Docs" : s.short, icon: DOCK_ICONS[s.id] }))}
-        value={active}
-        onChange={onGo}
+        items={DOCK_ITEMS}
+        value={route === "about" ? null : DOCK_OF[active]}
+        onChange={(v) => onGo(v === "lab" ? "any" : v)}
         itemWidth={itemWidth}
-        height={size + 8}
+        height={size + 4}
         gap={gap}
-        actionSize={size + 8}
+        actionSize={size + 4}
         action={{
-          label: theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-          icon: theme === "light" ? <MoonIcon width={26} height={26} /> : <SunIcon width={26} height={26} />,
-          onClick: () => setTheme(theme === "light" ? "dark" : "light"),
+          label: "About",
+          icon: <InfoIcon />,
+          active: route === "about",
+          onClick: () => onGo("about"),
         }}
       />
     </div>
@@ -320,29 +358,12 @@ function ThemeCard({ theme, setTheme }) {
   return (
     <Card
       title="Theme switch"
-      text="The same nav with sun and moon items. This one is wired to the whole page, try it."
+      text="A real switch that works like the nav bar: a see-through glass thumb that slides, stretches and bounces. Tap it or drag it. It's wired to the whole page."
       code={`<LiquidThemeSwitch theme={theme} onChange={setTheme} />`}
     >
       <Stage variant="grid">
-        <LiquidThemeSwitch theme={theme} onChange={setTheme} itemWidth={72} height={64} padding={6} />
+        <LiquidThemeSwitch theme={theme} onChange={setTheme} height={72} />
         <span className="readout">{theme}</span>
-      </Stage>
-    </Card>
-  );
-}
-
-function SplitCard() {
-  const vw = useViewportWidth();
-  const width = Math.min(760, Math.max(560, vw - 0));
-  return (
-    <Card
-      wide
-      title="Split lens"
-      text="Two lenses refracted as one piece of glass. Drag them together and a liquid neck forms; pull them apart and it pinches off. This is the morph behind Liquid Glass tab bars."
-      code={`<LiquidSplitLens width={760} height={280} />`}
-    >
-      <Stage variant="stripes" className="tall">
-        <LiquidSplitLens width={width} height={300} />
       </Stage>
     </Card>
   );
@@ -366,6 +387,8 @@ const PHONE_TABS = [
 function PhoneCard() {
   const [tab, setTab] = useState("home");
   const [n, setN] = useState(1);
+  const pw = usePhoneWidth();
+  const tabW = Math.floor((pw - 24 - 12 - 10 - 62) / 4);
   return (
     <Card
       wide
@@ -389,7 +412,7 @@ function PhoneCard() {
           <LiquidScrollEdge position="bottom" height={130} />
           <div className="phone-top">
             <LiquidTopNav
-              width={316}
+              width={pw - 12}
               height={44}
               title={tab === "home" ? "Home" : tab[0].toUpperCase() + tab.slice(1)}
               leading={{ icon: <ChevronLeftIcon />, label: "Back", onClick: () => setN(1) }}
@@ -404,7 +427,7 @@ function PhoneCard() {
               items={PHONE_TABS}
               value={tab}
               onChange={setTab}
-              itemWidth={55}
+              itemWidth={tabW}
               height={62}
               gap={10}
               action={{ icon: <SearchIcon />, label: "Search", onClick: () => setTab("new") }}
@@ -413,6 +436,77 @@ function PhoneCard() {
         </div>
       </Stage>
     </Card>
+  );
+}
+
+/* --------------------------- split lens + swipe sections --------------------------- */
+
+function SplitSection() {
+  const vw = useViewportWidth();
+  const width = Math.max(300, Math.min(760, vw - 64));
+  return (
+    <section className="block" id="split">
+      <div className="block-head">
+        <h2>Split lens</h2>
+        <p>
+          Two lenses refracted as one piece of glass. When they get close a liquid neck forms; when they part it pinches
+          off. This is the morph behind Liquid Glass tab bars.
+        </p>
+      </div>
+      <div className="grid grid--wide">
+        <Card
+          wide
+          title="Drag"
+          text="Pull the lenses together and apart."
+          code={`<LiquidSplitLens width={760} height={300} />`}
+        >
+          <Stage variant="stripes" className="tall">
+            <LiquidSplitLens width={width} height={300} />
+          </Stage>
+        </Card>
+        <Card
+          wide
+          title="Auto"
+          text="Plays on its own when this area scrolls into view: the lenses drift together, melt into one body, then pinch apart. Grab one to take over; it resumes when you let go."
+          code={`<LiquidSplitLens auto width={760} height={300} />`}
+        >
+          <Stage variant="aurora" className="tall">
+            <LiquidSplitLens auto width={width} height={300} />
+          </Stage>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function SwipeSection() {
+  const [page, setPage] = useState(0);
+  const names = ["Photos", "Map", "Chat"];
+  return (
+    <section className="block" id="swipe">
+      <div className="block-head">
+        <h2>Mobile split lens</h2>
+        <p>
+          Swipe the pages left and right. The tab bar’s selection lens is two glass blobs in one body: as you swipe, it
+          stretches and splits in two, then melts back into a single lens on the new page. You can also tap a tab, or
+          slide along the bar.
+        </p>
+      </div>
+      <Card
+        wide
+        title="Swipe pages"
+        text="Drag the page sideways (or use a touch screen)."
+        code={`<LiquidSwipeView
+  width={328} height={588}
+  pages={[{ key: "photos", label: "Photos", icon: <PhotoIcon />, content: <Photos /> }, …]}
+/>`}
+      >
+        <Stage variant="grid" className="phone-stage">
+          <SwipePhone onIndexChange={setPage} />
+        </Stage>
+        <span className="readout readout--center">page: {names[page]}</span>
+      </Card>
+    </section>
   );
 }
 
@@ -590,11 +684,13 @@ function Usage() {
       </div>
       <div className="usage">
         <Code>{`npm i motion react react-dom`}</Code>
-        <Code>{`import { LiquidGlass, LiquidNav, LiquidSwitch } from "./liquid-glass";
+        <Code>{`import { LiquidGlass, LiquidSwipeView, LiquidSplitLens } from "./liquid-glass";
 
 <LiquidGlass draggable width={220} height={120}>
   …anything…
-</LiquidGlass>`}</Code>
+</LiquidGlass>
+
+<LiquidSplitLens auto width={560} height={260} />`}</Code>
       </div>
       <p className="usage-note">
         Refraction uses <code>backdrop-filter: url(#svg)</code>, which only Chromium browsers implement. Everywhere else
@@ -610,11 +706,13 @@ export default function App() {
   const supported = supportsSvgBackdrop();
   const vw = useViewportWidth();
   const [theme, setTheme] = useTheme();
+  const [route, navigate] = useRoute();
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const lock = useRef(false);
-  const [active, setActive] = useScrollSpy(SECTIONS.map((s) => s.id), lock);
+  const pending = useRef(null);
+  const [active, setActive] = useScrollSpy(SECTIONS.map((s) => s.id), lock, route === "home");
 
-  const go = (id) => {
+  const scrollToSection = (id, instant) => {
     setActive(id);
     lock.current = true;
     const unlock = () => {
@@ -622,15 +720,50 @@ export default function App() {
     };
     window.addEventListener("scrollend", unlock, { once: true });
     setTimeout(unlock, 1600); // fallback where `scrollend` doesn't exist
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const behavior = instant ? "auto" : "smooth";
+    if (id === "home") window.scrollTo({ top: 0, behavior });
+    else document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
   };
+
+  const go = (id) => {
+    if (id === "about") {
+      navigate("about");
+      return;
+    }
+    if (route !== "home") {
+      pending.current = id; // scroll once the home page is back on screen
+      navigate("home");
+      return;
+    }
+    scrollToSection(id);
+  };
+
+  useEffect(() => {
+    if (route === "about") {
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    if (pending.current) {
+      const id = pending.current;
+      pending.current = null;
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(id, true)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route]);
+
+  const navValue = route === "about" ? "about" : active;
 
   return (
     <>
       {vw < 640 ? (
-        <MobileDock theme={theme} setTheme={setTheme} active={active} onGo={go} />
+        <>
+          <MobileDock active={active} route={route} onGo={go} />
+          <div className="mobile-theme">
+            <LiquidThemeSwitch theme={theme} onChange={setTheme} height={38} />
+          </div>
+        </>
       ) : (
-        <TopBar theme={theme} setTheme={setTheme} active={active} onGo={go} />
+        <TopBar theme={theme} setTheme={setTheme} value={navValue} onGo={go} />
       )}
       <main className="page">
         {!supported && !noticeDismissed && (
@@ -654,30 +787,40 @@ export default function App() {
             </button>
           </p>
         )}
-        <Hero />
 
-        <section className="block" id="kit">
-          <div className="block-head">
-            <h2>The kit</h2>
-            <p>
-              Each one is a thin preset over <code>LiquidGlass</code>.
-            </p>
-          </div>
-          <div className="grid">
-            <SwitchCard />
-            <SliderCard />
-            <SearchCard />
-            <ButtonCard />
-            <NavCard />
-            <ThemeCard theme={theme} setTheme={setTheme} />
-            <SplitCard />
-            <PhoneCard />
-          </div>
-        </section>
+        {route === "about" ? (
+          <About />
+        ) : (
+          <>
+            <section id="home">
+              <Hero />
+            </section>
 
-        <AnyDiv />
-        <Playground />
-        <Usage />
+            <section className="block" id="kit">
+              <div className="block-head">
+                <h2>The kit</h2>
+                <p>
+                  Each one is a thin preset over <code>LiquidGlass</code>.
+                </p>
+              </div>
+              <div className="grid">
+                <SwitchCard />
+                <SliderCard />
+                <SearchCard />
+                <ButtonCard />
+                <NavCard />
+                <ThemeCard theme={theme} setTheme={setTheme} />
+                <PhoneCard />
+              </div>
+            </section>
+
+            <SplitSection />
+            <SwipeSection />
+            <AnyDiv />
+            <Playground />
+            <Usage />
+          </>
+        )}
 
         <footer className="foot">
           <span>Based on Kube’s “Liquid Glass in the Browser: Refraction with CSS and SVG”. Ported to plain React + CSS.</span>
@@ -687,7 +830,7 @@ export default function App() {
             height={42}
             onClick={() => window.open("https://github.com/SaurabhArt111/", "_blank", "noopener,noreferrer")}
           >
-            GitHub <span aria-hidden="true" >↗</span>
+            GitHub <span aria-hidden="true">↗</span>
           </LiquidButton>
         </footer>
       </main>

@@ -1,0 +1,421 @@
+/* Liquid Glass — component styles. Plain CSS, no framework. */
+
+.lg-root {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* keeps the springy scale from triggering layout */
+  will-change: transform;
+}
+
+.lg-draggable {
+  cursor: grab;
+}
+.lg-draggable:active {
+  cursor: grabbing;
+}
+
+.lg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lg-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lg-dim,
+.lg-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* real specular-edge map, only used by the CSS-only fallback */
+.lg-spec {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.lg-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ---------------------------------- Searchbox --------------------------------- */
+
+.lg-searchbox {
+  cursor: text;
+}
+.lg-searchbox .lg-content {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 20px;
+  color: var(--lg-fg, rgba(255, 255, 255, 0.92));
+}
+.lg-searchbox svg {
+  flex: none;
+  opacity: 0.7;
+}
+.lg-searchbox input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.lg-searchbox input::placeholder {
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}
+.lg-searchbox input::selection {
+  background: rgba(80, 140, 255, 0.4);
+}
+.lg-searchbox input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* ------------------------------------ Button ---------------------------------- */
+
+.lg-button {
+  cursor: pointer;
+  outline: none;
+}
+.lg-button .lg-content {
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  gap: 8px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+.lg-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 4px;
+}
+
+/* ------------------------------------ Switch ---------------------------------- */
+
+.lg-switch {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  touch-action: pan-y;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-switch:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 4px;
+}
+
+.lg-switch-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lg-switch-icon, #fff);
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 200ms;
+}
+.lg-switch-icon.is-on {
+  opacity: 1;
+}
+.lg-switch-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------ Slider ---------------------------------- */
+
+.lg-slider {
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-slider:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.lg-slider-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  background: rgba(137, 137, 143, 0.4);
+}
+.lg-slider-fill {
+  height: 100%;
+}
+
+/* ------------------------------------- Nav ------------------------------------ */
+
+.lg-nav {
+  color: var(--lg-nav-fg, #fff);
+}
+/* let the sliding lens inflate past the bar's edge */
+.lg-nav .lg-content {
+  overflow: visible;
+}
+.lg-nav-inner {
+  position: relative;
+  flex: none;
+}
+.lg-nav-items {
+  position: absolute;
+  display: flex;
+}
+.lg-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  opacity: 0.62;
+  touch-action: pan-y;
+  transition: opacity 160ms, color 160ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-nav-item svg {
+  flex: none;
+  transition: scale 200ms cubic-bezier(0.5, 0, 0, 1);
+}
+.lg-nav-item:hover:not(.is-active) {
+  opacity: 1;
+  color: var(--lg-nav-accent, currentColor);
+}
+.lg-nav-item:hover:not(.is-active) svg {
+  scale: 1.2;
+}
+.lg-nav-item.is-active {
+  opacity: 1;
+  cursor: grab;
+}
+.lg-nav-item.is-active:active {
+  cursor: grabbing;
+}
+.lg-nav-item:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-nav-accent, #7fb0ff);
+}
+
+/* --------------------------------- Merge / blobs -------------------------------- */
+
+.lg-merge {
+  position: relative;
+  flex: none;
+  pointer-events: none; /* click-through; only blobs take input */
+}
+.lg-merge-glass,
+.lg-merge-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.lg-merge-glass {
+  /* the clip mask is generated at a different resolution than the box: always stretch it to fit */
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0 0;
+  mask-position: 0 0;
+}
+.lg-merge-shade {
+  /* the shade is a generated image of the *merged shape*; nothing here may paint the container's rectangle */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.lg-blob {
+  position: absolute;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+/* ------------------------------ Mobile bars / tab bar ----------------------------- */
+
+.lg-blob-content {
+  overflow: visible;
+}
+
+/* tab bar: icon above label, accent colour when selected */
+.lg-tabbar {
+  --lg-nav-fg: var(--lg-tab-fg, #fff);
+}
+.lg-tabbar .lg-nav-item {
+  gap: 3px;
+  font-size: 11px;
+}
+.lg-tabbar .lg-nav-item.is-active {
+  color: var(--lg-tab-accent, #ff3b6b);
+}
+.lg-tabbar .lg-nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+.lg-tab-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--lg-tab-fg, #fff);
+  cursor: pointer;
+  outline: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-tab-action:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-tab-accent, #ff3b6b);
+}
+
+.lg-iconbutton {
+  color: var(--lg-nav-fg, #fff);
+}
+
+/* top bar */
+.lg-topnav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--lg-nav-fg, #fff);
+}
+.lg-topnav-side {
+  display: flex;
+  min-width: 0;
+}
+.lg-topnav-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  max-width: 50%;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.lg-topnav-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  color: var(--lg-nav-fg, #fff);
+}
+.lg-topnav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.lg-topnav-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--lg-nav-accent, #7fb0ff);
+}
+
+/* scroll edge: blur + fade under floating bars */
+.lg-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(var(--lg-edge-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--lg-edge-blur, 8px));
+}
+.lg-edge--top {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.32), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent);
+}
+.lg-edge--bottom {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.32), transparent);
+  -webkit-mask-image: linear-gradient(to top, #000 25%, transparent);
+  mask-image: linear-gradient(to top, #000 25%, transparent);
+}
+
+/* --------------------------- Swipe tabs / swipe view --------------------------- */
+
+.lg-swipetabs-inner {
+  touch-action: pan-y;
+  cursor: pointer;
+}
+.lg-swipeview {
+  position: relative;
+  overflow: hidden;
+  contain: paint;
+}
+.lg-swipeview-track {
+  display: flex;
+  height: 100%;
+}
+.lg-swipeview-page {
+  position: relative;
+  flex: none;
+  height: 100%;
+  overflow: hidden;
+}
+.lg-swipeview-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 3;
+  transform: translateX(-50%);
+}

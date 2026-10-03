@@ -1,22 +1,25 @@
 import { useEffect, useRef } from "react";
-import { animate, useDragControls, useMotionValue } from "motion/react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { animate, useDragControls, useMotionValue, useReducedMotion } from "motion/react";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 import { clamp } from "../lib/utils.js";
 
 const SPRING = { type: "spring", stiffness: 380, damping: 24 }; // under-damped → overshoots
+const SPRING_CALM = { type: "spring", stiffness: 380, damping: 39 }; // reduced motion: no overshoot
 
 /**
  * The inside of a nav bar: the items plus the sliding glass lens that sits
  * *under* their labels (so icons and text stay crisp). Drag the lens and it
  * snaps to the nearest item on release. Used by <LiquidNav> and <LiquidBottomNav>.
  */
-export function NavTrack({ items, index, onSelect, itemWidth, height, padding, indicatorProps }) {
+export function NavTrack({ items, index: rawIndex, onSelect, itemWidth, height, padding, indicatorProps }) {
   const count = items.length;
+  const index = Math.max(0, rawIndex); // rawIndex < 0 → nothing selected, lens hidden
   const width = count * itemWidth + padding * 2;
   const lensH = height - padding * 2;
 
   const x = useMotionValue(index * itemWidth);
   const dragging = useRef(false);
+  const spring = useReducedMotion() ? SPRING_CALM : SPRING;
   const controls = useDragControls();
   const press = useMotionValue(0); // inflates the lens as soon as you press it
 
@@ -32,9 +35,9 @@ export function NavTrack({ items, index, onSelect, itemWidth, height, padding, i
 
   useEffect(() => {
     if (dragging.current) return;
-    const anim = animate(x, index * itemWidth, SPRING);
+    const anim = animate(x, index * itemWidth, spring);
     return () => anim.stop();
-  }, [index, itemWidth, x]);
+  }, [index, itemWidth, x, spring]);
 
   return (
     <div className="lg-nav-inner" style={{ width, height }}>
@@ -70,14 +73,14 @@ export function NavTrack({ items, index, onSelect, itemWidth, height, padding, i
           dragging.current = false;
           const i = clamp(Math.round(x.get() / itemWidth), 0, count - 1);
           onSelect(i);
-          animate(x, i * itemWidth, SPRING); // also covers "released on same item"
+          animate(x, i * itemWidth, spring); // also covers "released on same item"
         }}
-        style={{ position: "absolute", left: padding, top: padding, pointerEvents: "none" }}
+        style={{ position: "absolute", left: padding, top: padding, pointerEvents: "none", opacity: rawIndex < 0 ? 0 : 1, transition: "opacity 200ms" }}
         {...indicatorProps}
       />
       <div className="lg-nav-items" style={{ left: padding, top: padding, height: lensH }}>
         {items.map((it, i) => {
-          const selected = i === index;
+          const selected = i === rawIndex;
           const shared = {
             onPointerDown: (e) => {
               if (!selected) return;
@@ -133,7 +136,7 @@ export function useNavSelection({ items, value, defaultValue, onChange, useState
   const [inner, setInner] = useState(defaultValue ?? items[0]?.value);
   const current = isControlled ? value : inner;
   const count = items.length;
-  const index = Math.max(0, items.findIndex((i) => i.value === current));
+  const index = items.findIndex((i) => i.value === current); // -1 → none selected
   const select = (i) => {
     const next = items[clamp(i, 0, count - 1)];
     if (!next) return;

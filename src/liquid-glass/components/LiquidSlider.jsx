@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { animate, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 import { clamp } from "../lib/utils.js";
 
 const SPRING = { type: "spring", stiffness: 500, damping: 30 };

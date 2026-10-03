@@ -14,6 +14,18 @@ export function useMv(value) {
 }
 
 let chromiumCache;
+let modeOverride; // set by configureLiquidGlass()
+
+/**
+ * Global switch. Call once, before the first render.
+ *   mode: "auto" (default) → refraction on Chromium, CSS glass elsewhere
+ *         "refraction"     → always use SVG refraction
+ *         "css"            → always use the CSS-only glass (cheapest, works everywhere)
+ */
+export function configureLiquidGlass({ mode } = {}) {
+  if (mode) modeOverride = mode;
+  chromiumCache = undefined;
+}
 /**
  * `backdrop-filter: url(#svg-filter)` is only implemented by Chromium
  * (Chrome, Edge, Arc, Brave, Opera…). WebKit — Safari and *every* browser on
@@ -27,8 +39,8 @@ export function supportsSvgBackdrop() {
   if (chromiumCache !== undefined) return chromiumCache;
   if (typeof navigator === "undefined") return (chromiumCache = false);
   const forced = new URLSearchParams(window.location.search).get("glass");
-  if (forced === "css") return (chromiumCache = false);
-  if (forced === "svg") return (chromiumCache = true);
+  if (forced === "css" || modeOverride === "css") return (chromiumCache = false);
+  if (forced === "svg" || modeOverride === "refraction") return (chromiumCache = true);
   const brands = navigator.userAgentData?.brands;
   chromiumCache = brands
     ? brands.some((b) => b.brand === "Chromium")

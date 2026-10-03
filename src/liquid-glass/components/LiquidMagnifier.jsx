@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 
 /**
  * A draggable magnifying lens. Zooms what's under it in the centre and

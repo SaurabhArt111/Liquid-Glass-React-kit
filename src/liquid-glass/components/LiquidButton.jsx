@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 
 /** Glass pill button: inflates and bounces back when pressed. */
 export const LiquidButton = forwardRef(function LiquidButton(

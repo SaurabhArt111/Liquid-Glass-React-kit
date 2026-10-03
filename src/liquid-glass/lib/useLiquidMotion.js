@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { isMotionValue, useMotionValue, useSpring, useTransform, useVelocity } from "motion/react";
+import { isMotionValue, useMotionValue, useReducedMotion, useSpring, useTransform, useVelocity } from "motion/react";
 import { clamp, lerp } from "./utils.js";
 
 /**
@@ -62,9 +62,11 @@ export function useLiquidMotion({
     return f || p ? 1 : 0;
   });
 
-  /* springs */
-  const bouncy = { stiffness: 340, damping: 20 };
-  const soft = { stiffness: 250, damping: 14 };
+  /* springs — critically damped (no bounce) and no jelly when the user prefers reduced motion */
+  const reduce = useReducedMotion();
+  const bouncy = reduce ? { stiffness: 340, damping: 37 } : { stiffness: 340, damping: 20 };
+  const soft = reduce ? { stiffness: 250, damping: 32 } : { stiffness: 250, damping: 14 };
+  if (reduce) jelly = 0;
   const snappy = { stiffness: 2000, damping: 80 };
 
   const baseScale = useSpring(useTransform(activeMv, (a) => lerp(restScale, activeScale, a)), bouncy);

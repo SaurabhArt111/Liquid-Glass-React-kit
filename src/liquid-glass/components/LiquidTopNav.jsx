@@ -1,4 +1,4 @@
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 import { LiquidIconButton } from "./LiquidIconButton.jsx";
 
 /**

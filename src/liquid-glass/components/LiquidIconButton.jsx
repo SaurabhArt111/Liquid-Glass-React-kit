@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { LiquidGlass } from "../LiquidGlass.jsx";
+import { LiquidGlass } from "../core/LiquidGlass.jsx";
 
 /** Round glass icon button (back, share, search…). Inflates, glows and bounces on press. */
 export const LiquidIconButton = forwardRef(function LiquidIconButton(

@@ -78,3 +78,29 @@ export const ChevronDownIcon = () => (
     <path d="m5 9 7 7 7-7" />
   </svg>
 );
+
+export const InfoIcon = () => (
+  <svg {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5" />
+    <circle cx="12" cy="7.6" r="0.6" fill="currentColor" />
+  </svg>
+);
+export const PhotoIcon = () => (
+  <svg {...base}>
+    <rect x="3.5" y="5" width="17" height="14" rx="3" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="m4 17 5-4.5 3.5 3 2.5-2L20 17" />
+  </svg>
+);
+export const MapIcon = () => (
+  <svg {...base}>
+    <path d="m9 5-5.5 2v12L9 17l6 2 5.5-2V5L15 7z" />
+    <path d="M9 5v12M15 7v12" />
+  </svg>
+);
+export const ChatIcon = () => (
+  <svg {...base}>
+    <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4.5 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
+  </svg>
+);
