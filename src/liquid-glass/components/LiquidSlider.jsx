@@ -126,6 +126,7 @@ export function LiquidSlider({
         activeTint={0.1}
         restScale={REST}
         activeScale={1}
+        holdMs={260}
         jelly={1.5}
         draggable="x"
         dragControls={controls}

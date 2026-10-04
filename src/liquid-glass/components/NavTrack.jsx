@@ -24,10 +24,15 @@ export function NavTrack({ items, index: rawIndex, onSelect, itemWidth, height, 
   const press = useMotionValue(0); // inflates the lens as soon as you press it
 
   useEffect(() => {
-    const release = () => press.set(0);
+    let t = 0;
+    const release = () => {
+      clearTimeout(t);
+      t = setTimeout(() => press.set(0), 300); // quick taps still show the lens inflating
+    };
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
     };

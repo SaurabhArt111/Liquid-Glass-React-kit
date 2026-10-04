@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { mix, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { LiquidGlass } from "../core/LiquidGlass.jsx";
 
@@ -6,7 +6,7 @@ const REST = 0.65; // thumb scale at rest
 const ACTIVE = 0.9; // thumb scale while held
 
 /** All geometry scales with `height` (the original design is 67px tall). */
-function geometry(h) {
+function geometry(h, rest = REST) {
   const r = h / 67;
   const trackW = 160 * r;
   const thumbW = 146 * r;
@@ -17,8 +17,8 @@ function geometry(h) {
     trackH: h,
     thumbW,
     thumbH,
-    travel: trackW - h - (thumbW - thumbH) * REST,
-    left: -((1 - REST) * thumbW) / 2 + (h - thumbH * REST) / 2,
+    travel: trackW - h - (thumbW - thumbH) * rest,
+    left: -((1 - rest) * thumbW) / 2 + (h - thumbH * rest) / 2,
     top: (h - thumbH) / 2,
   };
 }
@@ -36,6 +36,10 @@ function geometry(h) {
  *  - startIcon, endIcon  nodes drawn in the track, left / right (e.g. sun / moon); they sit
  *                        above the thumb, so give the thumb a low `thumbTint` to see through it
  *  - thumbTint      white overlay of the thumb at rest (default 1 = solid white)
+ *  - thumb          (progress) => node shown inside the thumb; progress is a MotionValue 0 → 1
+ *  - trackOff/On    scenery layers for the two states (cross-faded, refracted by the thumb)
+ *  - holdMs         minimum time the glass state lasts after a toggle (default 480). Quick taps,
+ *                   key presses and changes made from outside all play the full inflate + slide.
  *  - label          accessible name
  */
 export function LiquidSwitch({
@@ -50,12 +54,17 @@ export function LiquidSwitch({
   startIcon,
   endIcon,
   thumbTint = 1,
+  thumbRest = REST, // thumb scale at rest (0.65 = classic)
+  thumb, // (progress: MotionValue 0..1) => node drawn inside the thumb (e.g. a morphing icon)
+  trackOff, // node(s) drawn in the track while OFF / ON (cross-fade); the thumb refracts them
+  trackOn,
+  holdMs = 480, // the thumb stays a liquid glass lens at least this long after any change, so even a very quick tap plays it
   label,
   className = "",
   style,
   ...props
 }) {
-  const g = useMemo(() => geometry(height), [height]);
+  const g = useMemo(() => geometry(height, thumbRest), [height, thumbRest]);
   const reduce = useReducedMotion();
   const isControlled = checked !== undefined;
   const checkedMv = useMotionValue((isControlled ? checked : defaultChecked) ? 1 : 0);
@@ -64,11 +73,34 @@ export function LiquidSwitch({
   const dragRatio = useMotionValue(0);
   const startX = useMotionValue(0);
   const moved = useMotionValue(0);
+  const glassOn = useMotionValue(0); // visual "liquid" state: pressed OR changed recently
+  const holdTimer = useRef(0);
+  const holdRef = useRef(holdMs);
+  holdRef.current = holdMs;
+  const pulse = () => {
+    clearTimeout(holdTimer.current);
+    glassOn.set(1);
+    holdTimer.current = setTimeout(() => glassOn.set(0), holdRef.current);
+  };
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
+  const thumbActive = useTransform(() => {
+    const p = pressed.get();
+    const g = glassOn.get();
+    return p || g ? 1 : 0;
+  });
 
   useEffect(() => {
     if (isControlled) checkedMv.set(checked ? 1 : 0);
   }, [checked, isControlled, checkedMv]);
-  useEffect(() => checkedMv.on("change", (v) => setOn(v > 0.5)), [checkedMv]);
+  useEffect(
+    () =>
+      checkedMv.on("change", (v) => {
+        setOn(v > 0.5);
+        pulse(); // any change (tap, key, prop) plays the glass animation
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [checkedMv],
+  );
 
   const commit = (next) => {
     if (next === checkedMv.get() > 0.5) return;
@@ -94,10 +126,9 @@ export function LiquidSwitch({
     const c = checkedMv.get();
     return p > 0.5 ? (d > 0.5 ? 1 : 0) : c > 0.5 ? 1 : 0;
   });
-  const backgroundColor = useTransform(
-    useSpring(considerChecked, { stiffness: 1000, damping: 80 }),
-    mix(offColor + offAlpha, onColor + onAlpha),
-  );
+  const progress = useSpring(considerChecked, { stiffness: 1000, damping: 80 });
+  const backgroundColor = useTransform(progress, mix(offColor + offAlpha, onColor + onAlpha));
+  const offOpacity = useTransform(progress, (v) => 1 - v);
 
   const onPointerDown = (e) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -105,6 +136,8 @@ export function LiquidSwitch({
     moved.set(0);
     dragRatio.set(checkedMv.get());
     pressed.set(1);
+    clearTimeout(holdTimer.current); // stay glassy while held
+    glassOn.set(1);
   };
   const onPointerMove = (e) => {
     if (!pressed.get()) return;
@@ -120,6 +153,7 @@ export function LiquidSwitch({
     const next = moved.get() ? dragRatio.get() > 0.5 : !(checkedMv.get() > 0.5);
     commit(next); // update state first, then release, so the spring has one target
     pressed.set(0);
+    pulse(); // …and keep the glass look for holdMs even if nothing changed
   };
 
   const iconSize = Math.round(g.trackH * 0.46);
@@ -135,7 +169,10 @@ export function LiquidSwitch({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => pressed.set(0)}
+      onPointerCancel={() => {
+        pressed.set(0);
+        pulse();
+      }}
       onKeyDown={(e) => {
         if (e.key === " " || e.key === "Enter") {
           e.preventDefault();
@@ -145,6 +182,12 @@ export function LiquidSwitch({
       style={{ width: g.trackW, height: g.trackH, borderRadius: g.trackH / 2, backgroundColor, ...style }}
       {...props}
     >
+      {(trackOff || trackOn) && (
+        <div className="lg-switch-scene" aria-hidden="true">
+          {trackOff && <motion.div className="lg-switch-layer" style={{ opacity: offOpacity }}>{trackOff}</motion.div>}
+          {trackOn && <motion.div className="lg-switch-layer" style={{ opacity: progress }}>{trackOn}</motion.div>}
+        </div>
+      )}
       <LiquidGlass
         width={g.thumbW}
         height={g.thumbH}
@@ -159,13 +202,15 @@ export function LiquidSwitch({
         restRefraction={0.4}
         tint={thumbTint}
         activeTint={0.1}
-        restScale={REST}
+        restScale={thumbRest}
         activeScale={ACTIVE}
         jelly={3}
         x={thumbX}
-        active={pressed}
+        active={thumbActive}
         style={{ position: "absolute", left: g.left, top: g.top, pointerEvents: "none" }}
-      />
+      >
+        {thumb?.(progress)}
+      </LiquidGlass>
       {startIcon && (
         <span className={`lg-switch-icon${!on ? " is-on" : ""}`} style={{ left: iconPad, top: iconPad, width: iconSize, height: iconSize }}>
           {startIcon}

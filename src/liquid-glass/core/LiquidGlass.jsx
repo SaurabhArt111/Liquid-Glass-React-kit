@@ -3,7 +3,8 @@ import { motion, useMotionValue, useTransform } from "motion/react";
 import { LiquidFilter } from "./LiquidFilter.jsx";
 import { getSpecularMap } from "../lib/optics.js";
 import { useLiquidMotion } from "../lib/useLiquidMotion.js";
-import { clamp, lerp, supportsSvgBackdrop, useMv } from "../lib/utils.js";
+import { getQuality } from "../lib/quality.js";
+import { clamp, lerp, supportsSvgBackdrop, useForwardedRef, useMv, useNearViewport } from "../lib/utils.js";
 
 // CSS-only "curved glass" sheen used where SVG refraction is unavailable (iOS/WebKit, Firefox)
 const SHEEN =
@@ -30,7 +31,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     bezelType = "convex", // 'convex' | 'circle' | 'concave' | 'lip'
     variant = "regular", // 'regular' | 'clear' (clear = see-through media glass; pair with `dim`)
     dim = 0, // 0..1 dark layer under the glass, keeps content legible on clear glass
-    dispersion = 0.04, // chromatic fringe at the rim (0 = off)
+    dispersion, // chromatic fringe at the rim (0 = off; default: on for "high" quality only)
     glow = 0.5, // "illuminates from within" at the touch point (0 = off)
     blur,
     refraction = 1, // 0..1 — strength while active
@@ -50,6 +51,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     activeScale = 1.1,
     jelly = 1, // squash & stretch amount (0 = off)
     active = false, // force the "pressed" look (boolean | MotionValue)
+    holdMs = 0, // keep the pressed look at least this long after release (quick taps still play the inflate)
     onPressChange,
     /* dragging */
     draggable = false, // false | true | 'x' | 'y'
@@ -73,9 +75,12 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   const bezel = Math.min(bezelWidth ?? Math.round(Math.min(width, height) * 0.3), r);
   const filterId = "lg" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const svgBackdrop = useMemo(supportsSvgBackdrop, []);
+  const [rootRef, setRootRef] = useForwardedRef(ref);
+  const near = useNearViewport(rootRef); // glass that is far off-screen costs nothing
+  const disp = dispersion ?? (getQuality().dispersion ? 0.04 : 0);
   const specUrl = useMemo(
-    () => (svgBackdrop ? null : getSpecularMap({ width, height, radius: r })),
-    [svgBackdrop, width, height, r],
+    () => (svgBackdrop || !near ? null : getSpecularMap({ width, height, radius: r })),
+    [svgBackdrop, near, width, height, r],
   );
   const specOpacityMv = useMv(specularOpacity ?? 0.5);
   const specOverlayOpacity = useTransform(() => clamp(specOpacityMv.get() * 0.9, 0, 1));
@@ -108,6 +113,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     activeTint,
     jelly,
     active,
+    holdMs,
     onPressChange,
     x: xProp,
     y: yProp,
@@ -164,9 +170,11 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   });
   const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${a})`);
   const fbBlur = fallbackBlur ?? (magnify ? 0 : 3);
-  const backdropFilter = svgBackdrop
-    ? `url(#${filterId})`
-    : `${fbBlur ? `blur(${fbBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
+  const backdropFilter = !near
+    ? "none"
+    : svgBackdrop
+      ? `url(#${filterId})`
+      : `${fbBlur ? `blur(${fbBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
 
   /* -------------------------------- dragging ------------------------------ */
   const dragProp = draggable === true ? true : draggable || false;
@@ -174,7 +182,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
 
   return (
     <motion.div
-      ref={ref}
+      ref={setRootRef}
       className={`lg-root ${dragProp ? "lg-draggable" : ""} ${className}`}
       style={{ width, height, borderRadius: r, x, y, scaleX, scaleY, touchAction, ...style }}
       drag={dragProp}
@@ -200,7 +208,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
       }}
       {...rest}
     >
-      {svgBackdrop && (
+      {svgBackdrop && near && (
         <LiquidFilter
           id={filterId}
           width={width}
@@ -211,7 +219,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           refractiveIndex={refractiveIndex}
           bezelType={bezelType}
           blur={blurV}
-          dispersion={dispersion}
+          dispersion={disp}
           scaleRatio={refractionMv}
           specularOpacity={specV}
           specularSaturation={specularSaturation}
@@ -230,7 +238,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           boxShadow,
         }}
       />
-      {!svgBackdrop && (
+      {!svgBackdrop && specUrl && (
         <motion.div
           className="lg-spec"
           style={{ borderRadius: r, backgroundImage: `url(${specUrl})`, opacity: specOverlayOpacity }}

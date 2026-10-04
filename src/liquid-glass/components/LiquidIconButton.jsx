@@ -26,6 +26,7 @@ export const LiquidIconButton = forwardRef(function LiquidIconButton(
       specularOpacity={0.6}
       restScale={1}
       activeScale={1.14}
+      holdMs={320}
       jelly={0}
       onClick={disabled ? undefined : onClick}
       onKeyDown={(e) => {

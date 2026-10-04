@@ -20,3 +20,4 @@ export { LiquidThemeSwitch } from "./components/LiquidThemeSwitch.jsx";
 export { SunIcon, MoonIcon } from "./components/icons.jsx";
 export { SURFACES } from "./lib/surfaces.js";
 export { supportsSvgBackdrop, isIOS, configureLiquidGlass } from "./lib/utils.js";
+export { startLiquidFavicon, renderLiquidFavicon } from "./lib/favicon.js";

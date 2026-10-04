@@ -64,7 +64,7 @@ export function SwipePhone({ onIndexChange }) {
   const width = Math.max(260, Math.min(328, vw - 76));
   return (
     <div className="phone phone--swipe">
-      <LiquidSwipeView width={width} height={588} pages={PAGES} onIndexChange={onIndexChange} />
+      <LiquidSwipeView width={width} height={588} pages={PAGES} onIndexChange={onIndexChange} edgeRadius={42} />
     </div>
   );
 }

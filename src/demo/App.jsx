@@ -408,11 +408,11 @@ function PhoneCard() {
               </div>
             ))}
           </div>
-          <LiquidScrollEdge position="top" height={110} />
-          <LiquidScrollEdge position="bottom" height={130} />
+          <LiquidScrollEdge position="top" height={110} radius={42} />
+          <LiquidScrollEdge position="bottom" height={130} radius={42} />
           <div className="phone-top">
             <LiquidTopNav
-              width={pw - 12}
+              width={pw - 24}
               height={44}
               title={tab === "home" ? "Home" : tab[0].toUpperCase() + tab.slice(1)}
               leading={{ icon: <ChevronLeftIcon />, label: "Back", onClick: () => setN(1) }}
@@ -442,8 +442,6 @@ function PhoneCard() {
 /* --------------------------- split lens + swipe sections --------------------------- */
 
 function SplitSection() {
-  const vw = useViewportWidth();
-  const width = Math.max(300, Math.min(760, vw - 64));
   return (
     <section className="block" id="split">
       <div className="block-head">
@@ -453,28 +451,16 @@ function SplitSection() {
           off. This is the morph behind Liquid Glass tab bars.
         </p>
       </div>
-      <div className="grid grid--wide">
-        <Card
-          wide
-          title="Drag"
-          text="Pull the lenses together and apart."
-          code={`<LiquidSplitLens width={760} height={300} />`}
-        >
-          <Stage variant="stripes" className="tall">
-            <LiquidSplitLens width={width} height={300} />
-          </Stage>
-        </Card>
-        <Card
-          wide
-          title="Auto"
-          text="Plays on its own when this area scrolls into view: the lenses drift together, melt into one body, then pinch apart. Grab one to take over; it resumes when you let go."
-          code={`<LiquidSplitLens auto width={760} height={300} />`}
-        >
-          <Stage variant="aurora" className="tall">
-            <LiquidSplitLens auto width={width} height={300} />
-          </Stage>
-        </Card>
-      </div>
+      <Card
+        wide
+        title="Auto + drag"
+        text="It plays on its own when this area scrolls into view: the lenses drift together, melt into one body, then pinch apart. Grab a lens to take over, drag it anywhere in the stage; it resumes when you let go."
+        code={`<LiquidSplitLens auto />   {/* fills its (position: relative) parent */}`}
+      >
+        <Stage variant="stripes" className="tall split-stage">
+          <LiquidSplitLens auto />
+        </Stage>
+      </Card>
     </section>
   );
 }

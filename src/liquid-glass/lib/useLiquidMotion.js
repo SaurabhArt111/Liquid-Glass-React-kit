@@ -22,6 +22,7 @@ export function useLiquidMotion({
   activeTint,
   jelly = 1,
   active = false,
+  holdMs = 0,
   onPressChange,
   x: xProp,
   y: yProp,
@@ -36,24 +37,39 @@ export function useLiquidMotion({
 
   const onPressChangeRef = useRef(onPressChange);
   onPressChangeRef.current = onPressChange;
-  const setPressed = (v) => {
-    if (pressed.get() === v) return;
-    pressed.set(v);
-    onPressChangeRef.current?.(!!v);
-  };
-  useEffect(() => {
-    const release = () => {
+  const holdRef = useRef(holdMs);
+  holdRef.current = holdMs;
+  const timer = useRef(0);
+  // Pressing is instant; releasing waits `holdMs` so even a very quick tap plays the full glass inflate.
+  const settle = () => {
+    clearTimeout(timer.current);
+    const done = () => {
       if (pressed.get()) {
         pressed.set(0);
         onPressChangeRef.current?.(false);
       }
     };
+    if (holdRef.current > 0) timer.current = setTimeout(done, holdRef.current);
+    else done();
+  };
+  const setPressed = (v) => {
+    if (v) {
+      clearTimeout(timer.current);
+      if (pressed.get() === 1) return;
+      pressed.set(1);
+      onPressChangeRef.current?.(true);
+    } else settle();
+  };
+  useEffect(() => {
+    const release = () => settle();
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
     return () => {
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
+      clearTimeout(timer.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pressed]);
 
   const activeMv = useTransform(() => {

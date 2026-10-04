@@ -45,9 +45,24 @@ function canvasFor(scratch, key, w, h) {
   return c;
 }
 
+/** Reusable ImageData of exactly w×h (allocating per frame is what makes things janky). */
+function imageDataFor(scratch, key, w, h) {
+  let img = scratch[key];
+  if (!img || img.width !== w || img.height !== h) img = scratch[key] = new ImageData(w, h);
+  return img;
+}
+
 /**
+ * Draws the merged maps for the *region of interest only* — the bounding box of the blobs plus the
+ * room their bezel, neck and shadow need — never the whole container. Cost scales with what is
+ * visibly glass, not with how big the stage is.
+ *
  * @param blobs [{ x, y, w, h, r }]  centre + size in css px, relative to the container
- * @returns { displacement, shade, mask? } PNG data URLs
+ * @returns null (nothing to draw) or
+ *   { roi: { x, y, w, h }  css px rect the images cover (relative to the container),
+ *     displacement?: PNG data URL   (RG vectors, neutral 128 outside shapes),
+ *     mask?: PNG data URL           (shape coverage — only for the CSS fallback) }
+ *   The shade layer is painted straight onto `shadeCanvas` (no image encoding).
  */
 export function drawMerged({
   width,
@@ -57,25 +72,24 @@ export function drawMerged({
   bezelWidth,
   profile, // from getProfile()
   scale = 1, // canvas px per css px
+  maxPixels = 120000, // budget: the scale is reduced if the region would need more
   tintRGB = [255, 255, 255],
   tintAlpha = 0.05,
   specularOpacity = 0.5,
   shadow = 1,
   wantDisplacement = true,
   wantMask = false,
+  shadeCanvas,
   scratch,
 }) {
-  const w = Math.max(4, Math.round(width * scale));
-  const h = Math.max(4, Math.round(height * scale));
-  const inv = 1 / scale;
   const K = smoothing;
   const nb = blobs.length;
   const list = profile.list;
   const pl = list.length;
-  const bs = bezelWidth * scale;
   const dispGain = 127 / profile.maxDisplacement;
+  const shadowReach = 34;
 
-  // region of interest: union bounding box + bezel + neck + shadow reach
+  /* region of interest (css px, integers) */
   const m = bezelWidth + K + 30;
   let x0 = Infinity,
     y0 = Infinity,
@@ -87,41 +101,58 @@ export function drawMerged({
     y0 = Math.min(y0, b.y - b.h / 2 - m);
     y1 = Math.max(y1, b.y + b.h / 2 + m);
   }
-  const ix0 = Math.max(1, Math.floor(x0 * scale));
-  const ix1 = Math.min(w - 2, Math.ceil(x1 * scale));
-  const iy0 = Math.max(1, Math.floor(y0 * scale));
-  const iy1 = Math.min(h - 2, Math.ceil(y1 * scale));
+  const rx0 = Math.max(0, Math.floor(x0));
+  const ry0 = Math.max(0, Math.floor(y0));
+  const rw = Math.min(width, Math.ceil(x1)) - rx0;
+  const rh = Math.min(height, Math.ceil(y1)) - ry0;
+  if (rw < 4 || rh < 4) return null;
 
-  const dImg = wantDisplacement ? new ImageData(w, h) : null;
-  if (dImg) new Uint32Array(dImg.data.buffer).fill(0xff008080); // neutral (no displacement)
-  const sImg = new ImageData(w, h);
-  const mImg = wantMask ? new ImageData(w, h) : null;
-  const sdSize = w * h;
-  if (!scratch.sd || scratch.sd.length !== sdSize) scratch.sd = new Float32Array(sdSize);
+  let s = scale;
+  if (rw * rh * s * s > maxPixels) s *= Math.sqrt(maxPixels / (rw * rh * s * s));
+  const cw = Math.max(4, Math.round(rw * s));
+  const ch = Math.max(4, Math.round(rh * s));
+  const inv = 1 / s;
+  const bs = bezelWidth * s;
+
+  const dImg = wantDisplacement ? imageDataFor(scratch, "dImg", cw, ch) : null;
+  if (dImg) new Uint32Array(dImg.data.buffer).fill(0xff008080); // neutral = no displacement
+  const sImg = imageDataFor(scratch, "sImg", cw, ch);
+  sImg.data.fill(0);
+  const mImg = wantMask ? imageDataFor(scratch, "mImg", cw, ch) : null;
+  if (mImg) mImg.data.fill(0);
+
+  const n = cw * ch;
+  if (!scratch.sd || scratch.sd.length < n) scratch.sd = new Float32Array(n);
   const sd = scratch.sd;
 
-  /* 1 ─ smooth-union signed distance on the grid (css px units) */
-  for (let y = iy0 - 1; y <= iy1 + 1; y++) {
-    const py = y * inv;
-    for (let x = ix0 - 1; x <= ix1 + 1; x++) {
-      const px = x * inv;
+  /* 1 ─ smooth-union signed distance (css px) on the region's grid */
+  const reach = K + shadowReach;
+  for (let y = 0; y < ch; y++) {
+    const py = ry0 + y * inv;
+    for (let x = 0; x < cw; x++) {
+      const px = rx0 + x * inv;
       let d = 0;
+      let first = true;
       for (let k = 0; k < nb; k++) {
         const c = blobs[k];
+        // far from this blob: leave it out (its distance can't matter for shading or the neck)
+        if (Math.abs(px - c.x) > c.w * 0.5 + reach || Math.abs(py - c.y) > c.h * 0.5 + reach) continue;
         const qx = Math.abs(px - c.x) - (c.w * 0.5 - c.r);
         const qy = Math.abs(py - c.y) - (c.h * 0.5 - c.r);
         const ax = qx > 0 ? qx : 0;
         const ay = qy > 0 ? qy : 0;
         const inner = qx > qy ? qx : qy;
         const e = Math.sqrt(ax * ax + ay * ay) + (inner < 0 ? inner : 0) - c.r;
-        if (k === 0) d = e;
-        else if (K <= 0.5) d = d < e ? d : e;
+        if (first) {
+          d = e;
+          first = false;
+        } else if (K <= 0.5) d = d < e ? d : e;
         else {
           const hh = Math.max(K - Math.abs(d - e), 0) / K;
           d = (d < e ? d : e) - hh * hh * K * 0.25;
         }
       }
-      sd[y * w + x] = d;
+      sd[y * cw + x] = first ? 1000 : d;
     }
   }
 
@@ -130,24 +161,23 @@ export function drawMerged({
   const sdata = sImg.data;
   const mdata = mImg?.data;
   const [tr, tg, tb] = tintRGB;
-  const spec = specularOpacity;
   const sh = shadow;
+  const spec = specularOpacity;
 
-  for (let y = iy0; y <= iy1; y++) {
-    for (let x = ix0; x <= ix1; x++) {
-      const i = y * w + x;
+  for (let y = 1; y < ch - 1; y++) {
+    for (let x = 1; x < cw - 1; x++) {
+      const i = y * cw + x;
       const dcss = sd[i];
-      if (dcss > 32 || dcss < -(bezelWidth + 40) * 4) continue;
+      if (dcss > 32) continue; // nothing is drawn out here
       const gx = sd[i + 1] - sd[i - 1];
-      const gy = sd[i + w] - sd[i - w];
+      const gy = sd[i + cw] - sd[i - cw];
       const mg = Math.sqrt(gx * gx + gy * gy) || 1;
       const nx = gx / mg; // outward normal, screen coords (+y is down)
       const ny = gy / mg;
-      const dpx = dcss * scale;
+      const dpx = dcss * s;
       const p = i * 4;
       const inside = dpx <= -0.5 ? 1 : dpx >= 0.5 ? 0 : 0.5 - dpx; // anti-aliased coverage
 
-      /* displacement */
       if (dd && dpx <= 0.5 && dpx >= -bs) {
         let idx = ((-dpx / bs) * pl) | 0;
         if (idx < 0) idx = 0;
@@ -156,27 +186,23 @@ export function drawMerged({
         dd[p] = 128 - nx * v;
         dd[p + 1] = 128 - ny * v;
       }
-
       if (mdata) {
         mdata[p] = mdata[p + 1] = mdata[p + 2] = 255;
         mdata[p + 3] = inside * 255;
       }
 
-      /* shading layers: fill → highlight → shadow, composited bottom-up */
-      let fillA = inside * tintAlpha;
+      /* shading layers: fill → highlight → shadow */
+      const fillA = inside * tintAlpha;
       let hiA = 0;
       let shA = 0;
       const t = -dcss; // depth into the glass (css px)
 
-      // specular rim (same model as a single lens: light from the upper right, 2px wide)
       if (t >= -0.3 && t <= 2) {
         const tt = t < 0 ? 0 : t;
         const dot = Math.abs(nx * 0.5 - ny * 0.866);
         const coef = dot * Math.sqrt(Math.max(0, 1 - (1 - tt) * (1 - tt)));
-        const sa = coef * coef * spec * (inside || 0);
-        hiA = sa;
+        hiA = coef * coef * spec * inside;
       }
-      // inner edge shading: light from the top-left → bright edge there, dark edge opposite
       if (t > 0 && t < 47) {
         const f = EXP7[(t * 2) | 0];
         const l = -0.6 * nx - 0.8 * ny;
@@ -188,13 +214,11 @@ export function drawMerged({
           shA = shA + a - shA * a;
         }
       }
-      // soft drop shadow outside, biased downward
       if (dcss > 0 && dcss < 47) {
         const a = 0.22 * EXP9[(dcss * 2) | 0] * (0.55 + 0.45 * ny) * sh * (1 - inside);
         shA = shA + a - shA * a;
       }
 
-      // composite: fill(T) → highlight(white) → shadow(black)
       let A = fillA;
       let R = tr * fillA;
       let G = tg * fillA;
@@ -220,19 +244,25 @@ export function drawMerged({
     }
   }
 
-  const out = {};
+  /* 3 ─ output */
+  const roi = { x: rx0, y: ry0, w: cw / s, h: ch / s };
+  const out = { roi };
   if (dImg) {
-    const c = canvasFor(scratch, "disp", w, h);
+    const c = canvasFor(scratch, "disp", cw, ch);
     c.getContext("2d").putImageData(dImg, 0, 0);
     out.displacement = c.toDataURL();
   }
-  const sc = canvasFor(scratch, "shade", w, h);
-  sc.getContext("2d").putImageData(sImg, 0, 0);
-  out.shade = sc.toDataURL();
+  if (shadeCanvas) {
+    if (shadeCanvas.width !== cw || shadeCanvas.height !== ch) {
+      shadeCanvas.width = cw;
+      shadeCanvas.height = ch;
+    }
+    shadeCanvas.getContext("2d").putImageData(sImg, 0, 0);
+  }
   if (mImg) {
-    const mc = canvasFor(scratch, "mask", w, h);
-    mc.getContext("2d").putImageData(mImg, 0, 0);
-    out.mask = mc.toDataURL();
+    const c = canvasFor(scratch, "mask", cw, ch);
+    c.getContext("2d").putImageData(mImg, 0, 0);
+    out.mask = c.toDataURL();
   }
   return out;
 }

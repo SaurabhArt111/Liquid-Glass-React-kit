@@ -7,8 +7,6 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  /* keeps the springy scale from triggering layout */
-  will-change: transform;
 }
 
 .lg-draggable {
@@ -246,22 +244,27 @@
 .lg-merge-glass,
 .lg-merge-shade {
   position: absolute;
-  inset: 0;
   pointer-events: none;
 }
 .lg-merge-glass {
-  /* the clip mask is generated at a different resolution than the box: always stretch it to fit */
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+  inset: 0;
+  /* the clip mask (CSS fallback only) is generated at a different resolution than the box: stretch it exactly */
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: 0 0;
-  mask-position: 0 0;
+}
+/* Refraction: the glass layer extends 6px past the container and is clipped back, so the 1px
+   edge sampling artefacts of the displacement map fall outside what is visible. */
+.lg-merge-glass--svg {
+  inset: -6px;
+  -webkit-clip-path: inset(6px);
+  clip-path: inset(6px);
 }
 .lg-merge-shade {
-  /* the shade is a generated image of the *merged shape*; nothing here may paint the container's rectangle */
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  /* a canvas positioned over exactly the region the blobs cover; nothing paints the container's rectangle */
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
 }
 .lg-blob {
   position: absolute;
@@ -269,7 +272,6 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  will-change: transform;
 }
 
 /* ------------------------------ Mobile bars / tab bar ----------------------------- */
@@ -380,13 +382,15 @@
 }
 .lg-edge--top {
   top: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.32), transparent);
+  border-radius: var(--lg-edge-radius, 0) var(--lg-edge-radius, 0) 0 0;
+  background: linear-gradient(to bottom, var(--lg-edge-tint, rgba(0, 0, 0, 0.32)), transparent);
   -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent);
   mask-image: linear-gradient(to bottom, #000 25%, transparent);
 }
 .lg-edge--bottom {
   bottom: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.32), transparent);
+  border-radius: 0 0 var(--lg-edge-radius, 0) var(--lg-edge-radius, 0);
+  background: linear-gradient(to top, var(--lg-edge-tint, rgba(0, 0, 0, 0.32)), transparent);
   -webkit-mask-image: linear-gradient(to top, #000 25%, transparent);
   mask-image: linear-gradient(to top, #000 25%, transparent);
 }
@@ -418,4 +422,74 @@
   bottom: 14px;
   z-index: 3;
   transform: translateX(-50%);
+}
+
+/* a box that fills its (position: relative) parent: used by LiquidSplitLens when no size is given */
+.lg-fill {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ------------------------------ Theme switch scenery ------------------------------ */
+
+.lg-switch-scene {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lg-switch-layer {
+  position: absolute;
+  inset: 0;
+}
+.lg-theme-scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.lg-theme-day {
+  background: linear-gradient(180deg, #3f8dff 0%, #8fc3ff 62%, #d3eaff 100%);
+}
+.lg-theme-day i {
+  position: absolute;
+  border-radius: 999px;
+  background: #fff;
+  opacity: 0.95;
+  box-shadow: 0 2px 4px rgba(40, 90, 180, 0.18);
+}
+.lg-theme-night {
+  background: linear-gradient(180deg, #080c3a 0%, #1d2362 55%, #343a8f 100%);
+}
+.lg-theme-night i {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 5px 1px rgba(210, 220, 255, 0.85);
+}
+.lg-theme-thumb {
+  position: relative;
+  display: block;
+}
+.lg-theme-thumb > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lg-theme-thumb svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.25));
+}
+.lg-theme-thumb .sun {
+  color: #ffd84a;
+}
+.lg-theme-thumb .sun svg {
+  filter: drop-shadow(0 0 5px rgba(255, 190, 40, 0.75)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
+}
+.lg-theme-thumb .moon {
+  color: #f1f4ff;
 }

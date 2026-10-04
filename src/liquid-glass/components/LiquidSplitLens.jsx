@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { animate, useInView, useMotionValue, useReducedMotion } from "motion/react";
+import { useElementSize } from "../lib/utils.js";
 import { LiquidBlob, LiquidMerge } from "../core/LiquidMerge.jsx";
 
 const sleep = (ms, alive) =>
@@ -13,7 +14,9 @@ const sleep = (ms, alive) =>
  * refracted as a single piece of glass. Drag them to play with it.
  *
  * Props
- *  - width, height      size of the stage the lenses live in (px)
+ *  - width, height      size of the area the lenses live in (px). Omit them (the default) to FILL the
+ *                       parent element, which should be `position: relative` with a size of its own;
+ *                       the lenses can then be dragged anywhere inside it.
  *  - smoothing          how far the liquid neck reaches (px, default 34)
  *  - auto               play a looping merge ↔ split animation while the lens is on screen.
  *                       It starts when the area scrolls into view, pauses when it leaves,
@@ -21,18 +24,24 @@ const sleep = (ms, alive) =>
  *                       (Disabled for users who prefer reduced motion.)
  *  - ...props           forwarded to <LiquidMerge> (tint, refraction, dispersion, …)
  */
-export function LiquidSplitLens({ width = 520, height = 260, smoothing = 34, auto = false, ...props }) {
+export function LiquidSplitLens({ width, height, smoothing = 34, auto = false, ...props }) {
+  const fill = width == null || height == null;
+  const wrap = useRef(null);
+  const measured = useElementSize(wrap); // only meaningful when filling the parent
+  const W = fill ? measured.width : width;
+  const H = fill ? measured.height : height;
   const box = useRef(null);
   const reduce = useReducedMotion();
-  const inView = useInView(box, { amount: 0.5 });
+  const inView = useInView(fill ? wrap : box, { amount: 0.4 });
   const [held, setHeld] = useState(false);
   const resume = useRef(0);
 
-  const big = Math.min(height - 56, 150);
+  // lens sizes follow the stage (bounded by height AND width so they fit on a phone too)
+  const big = Math.max(64, Math.min(Math.round(H * 0.42), 170, Math.round(W * 0.32)));
   const small = Math.round(big * 0.78);
   const aW = Math.round(big * 1.35);
-  const aLeft = Math.round(width * 0.12);
-  const bLeft = Math.round(width * 0.66);
+  const aLeft = Math.round(W * 0.12);
+  const bLeft = Math.round(W * 0.66);
 
   const xA = useMotionValue(0);
   const yA = useMotionValue(0);
@@ -112,11 +121,11 @@ export function LiquidSplitLens({ width = 520, height = 260, smoothing = 34, aut
     onPointerDown: grab,
   };
 
-  return (
+  const merge = (
     <LiquidMerge
       ref={box}
-      width={width}
-      height={height}
+      width={W}
+      height={H}
       smoothing={smoothing}
       bezelWidth={30}
       glassThickness={86}
@@ -126,8 +135,15 @@ export function LiquidSplitLens({ width = 520, height = 260, smoothing = 34, aut
       shadow={1.4}
       {...props}
     >
-      <LiquidBlob left={aLeft} top={(height - big) / 2} width={aW} height={big} x={xA} y={yA} active={pulseA} aria-label="Lens one" {...shared} />
-      <LiquidBlob left={bLeft} top={(height - small) / 2} width={small} height={small} x={xB} y={yB} active={pulseB} aria-label="Lens two" {...shared} />
+      <LiquidBlob left={aLeft} top={(H - big) / 2} width={aW} height={big} x={xA} y={yA} active={pulseA} aria-label="Lens one" {...shared} />
+      <LiquidBlob left={bLeft} top={(H - small) / 2} width={small} height={small} x={xB} y={yB} active={pulseB} aria-label="Lens two" {...shared} />
     </LiquidMerge>
+  );
+
+  if (!fill) return merge;
+  return (
+    <div ref={wrap} className="lg-fill">
+      {W > 0 && H > 0 && merge}
+    </div>
   );
 }

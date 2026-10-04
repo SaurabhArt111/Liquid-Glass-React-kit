@@ -32,14 +32,15 @@ No build plugin, no provider, no config.
 |---|---|
 | any glass panel / lens / button, draggable, with my own content | `LiquidGlass` |
 | several shapes that melt into one body | `LiquidMerge` + `LiquidBlob` |
-| two lenses that merge and split (optionally on autoplay) | `LiquidSplitLens` |
+| two lenses that merge and split (autoplay + drag, fills its stage) | `LiquidSplitLens` |
 | swipeable pages with a tab bar whose lens splits in two | `LiquidSwipeView` (`LiquidSwipeTabs` for just the bar) |
 | mobile tab bar with a detached action button | `LiquidBottomNav` |
 | mobile top bar | `LiquidTopNav` (+ `LiquidIconButton`) |
 | fade where content slides under a floating bar | `LiquidScrollEdge` |
 | segmented nav / tab bar / page nav with links | `LiquidNav` |
 | on/off switch (any size, optional icons) | `LiquidSwitch` |
-| sun/moon theme switch | `LiquidThemeSwitch` |
+| day/night theme switch (sky + stars, glass thumb) | `LiquidThemeSwitch` |
+| a tab icon that is liquid glass | `startLiquidFavicon` |
 | slider · search field · button · magnifier | `LiquidSlider` · `LiquidSearchbox` · `LiquidButton` · `LiquidMagnifier` |
 
 Every preset forwards extra props to the `LiquidGlass` it is built on, so any optical prop below can
@@ -75,7 +76,7 @@ touch glow and a lifting shadow.
 | `dim` | `0` | 0–1 dark layer under the glass so content stays legible |
 | `blur` | `0.2` | blur of the refracted backdrop (px) |
 | `refraction` / `restRefraction` | `1` / `0.8×` | strength while active / at rest (0–1) |
-| `dispersion` | `0.04` | rainbow fringe at the rim (0 = off) |
+| `dispersion` | `0.04` on `high` quality, `0` otherwise | rainbow fringe at the rim (0 = off) |
 | `specularOpacity`, `specularSaturation` | `0.5`, `6` | light rim + colour boost on it |
 | `magnify` / `restMagnify` | `0` / `0.5×` | zoom in the middle (0 = off) |
 | `tint` / `activeTint` / `tintColor` | `0.05` / = `tint` / `"255,255,255"` | overlay alpha at rest / active, colour as `"r,g,b"` |
@@ -84,6 +85,7 @@ touch glow and a lifting shadow.
 | `restScale` / `activeScale` | `1` / `1.1` | scale at rest / while pressed (spring) |
 | `jelly` | `1` | squash & stretch from drag velocity (0 = off) |
 | `active` | `false` | force the pressed look (`boolean` or `MotionValue`) |
+| `holdMs` | `0` | keep the pressed look at least this long after release, so a very quick tap still plays the inflate (buttons use 320) |
 | `draggable` | `false` | `true` \| `"x"` \| `"y"` (+ `dragConstraints`, `dragElastic`) |
 | `x`, `y` | internal | pass your own `MotionValue`s to drive position |
 | `fallbackBlur` | `3` (`0` with `magnify`) | blur in px where refraction isn't available |
@@ -94,7 +96,7 @@ Changing `width`, `height`, `radius`, `bezelWidth`, `glassThickness`, `refractiv
 ## Presets at a glance
 
 ```jsx
-<LiquidSwitch checked={on} onChange={setOn} />                          // height, onColor, offColor, startIcon, endIcon
+<LiquidSwitch checked={on} onChange={setOn} />                          // height, onColor, offColor, startIcon, endIcon, holdMs
 <LiquidThemeSwitch theme={theme} onChange={setTheme} />                  // "light" | "dark"
 <LiquidSlider value={v} onChange={setV} min={0} max={100} step={1} />
 <LiquidSearchbox width={420} onSubmit={(q) => search(q)} />
@@ -104,8 +106,19 @@ Changing `width`, `height`, `radius`, `bezelWidth`, `glassThickness`, `refractiv
 
 <LiquidTopNav title="Trip" leading={back} trailing={[next, prev]} />
 <LiquidBottomNav items={tabs} value={tab} onChange={setTab} action={search} />
-<LiquidScrollEdge position="top" />
+<LiquidScrollEdge position="top" radius={42} />   // pass the frame's corner radius so the blur doesn't leak into rounded corners
 ```
+
+### Switch and theme switch
+
+`LiquidSwitch` scales with `height`, takes `startIcon` / `endIcon`, and its thumb stays a liquid glass lens
+for at least `holdMs` (default 480 ms) after **any** change: a tap, a key press or a change made from outside.
+Even the quickest tap plays the full inflate, slide and settle, and rapid toggling keeps it glassy.
+For custom designs it also takes `thumb={(progress) => node}` (content inside the thumb) and
+`trackOff` / `trackOn` (scenery for the two states, cross-faded and refracted by the thumb).
+
+`LiquidThemeSwitch` is built from exactly those: a sky with clouds and a night sky with stars in the track, and a
+see-through glass thumb in which a sun morphs into a moon.
 
 ### Swipeable pages with a splitting lens
 
@@ -134,14 +147,16 @@ const box = useRef(null);
   <LiquidBlob left={380} top={80} width={110} height={110} draggable dragConstraints={box} />
 </LiquidMerge>
 
-<LiquidSplitLens auto width={560} height={280} />   // ready-made pair; `auto` plays when scrolled into view
+<LiquidSplitLens auto />                            // ready-made pair; fills its position:relative parent
+<LiquidSplitLens auto width={560} height={280} />   // …or give it a fixed size
 ```
 
 The refraction map, rim light, shading and drop shadow come from the *smooth union* of the blobs' signed
 distance fields, so nearby blobs grow a neck and refract as one piece of glass. `smoothing` and
 `refraction` accept a MotionValue. The container is click-through; only blobs take input. Keep blobs
-inside the container's box (glass is only drawn there). `LiquidSplitLens auto` stops when you grab a
-lens and resumes shortly after you let go.
+inside the container's box (glass is only drawn there), so give it the whole stage. `LiquidSplitLens` with no
+`width`/`height` fills its parent and measures it (resize-aware); with `auto` it plays when scrolled into view,
+stops when you grab a lens and resumes shortly after you let go.
 
 ## Theming
 
@@ -158,6 +173,34 @@ Everything is plain CSS variables; set them on any ancestor.
 A bar that floats over arbitrary content should get a frosted backing so labels stay readable, e.g.
 `tint={0.6} tintColor="255,255,255"` (light) or `tint={0.34} tintColor="12,16,40"` (dark).
 
+## Favicon
+
+```js
+import { startLiquidFavicon } from "./liquid-glass";
+startLiquidFavicon();            // two lenses melt together and split apart in the tab icon (~8 fps)
+```
+
+Draws the icon on a 64 px canvas with real refraction of a colourful tile, rainbow dispersion at the rim, rim
+light and shadow, in about 1.5 ms per frame. Pauses while the tab is hidden, shows one still frame for
+`prefers-reduced-motion`, and returns `stop()`. Keep a static `<link rel="icon">` in your HTML for the first paint.
+`renderLiquidFavicon({ size, phase })` returns a single frame as a canvas (this is how the PNGs in `public/` were made).
+
+## Performance
+
+Glass is expensive, so the kit is built to do as little as possible:
+
+- **Quality profiles.** `configureLiquidGlass({ quality: "high" | "balanced" | "low" })`, detected from the device
+  by default (touch screens and ≤ 4 cores / ≤ 4 GB → `balanced`). Lower profiles use smaller maps, lower
+  resolution while things move and **no chromatic dispersion** (which triples the filter work of every element).
+- **Off-screen glass is free.** Every glass element drops its backdrop filter while it is more than ~240 px
+  outside the viewport (and `LiquidMerge` stops drawing).
+- **Merged glass only draws what it covers.** `LiquidMerge` works inside the bounding box of its blobs, never the
+  whole container, so it can fill a large stage. About 2–6 ms per frame while moving (≈ 3 ms on `balanced`) plus one
+  sharper pass, run when the browser is idle, after 140 ms of stillness. The shade is painted onto a canvas, so
+  nothing is encoded to an image except the displacement map. It adapts its resolution if frames get expensive.
+- No `will-change` layers: Motion promotes elements only while they animate.
+- Prefer fewer, larger glass elements over many tiny ones; each refracting element is its own filter.
+
 ## Browser support
 
 | Engine | What you get |
@@ -169,8 +212,8 @@ A bar that floats over arbitrary content should get a frosted backing so labels 
 WebKit and Firefox can't run SVG filters in `backdrop-filter`, so there is no refraction there, but all
 motion (drag, inflate, jelly, springs, merging) is JavaScript and is identical everywhere.
 
-- `configureLiquidGlass({ mode })` (call once, before the first render): `"auto"` (default),
-  `"refraction"` or `"css"` (cheapest; forces the CSS look everywhere).
+- `configureLiquidGlass({ mode, quality })` (call once, before the first render): `mode` is `"auto"` (default),
+  `"refraction"` or `"css"` (cheapest; forces the CSS look everywhere); `quality` is described under Performance.
 - `?glass=css` / `?glass=svg` in the URL forces a mode, handy for previewing the iOS look on desktop.
 - `supportsSvgBackdrop()` and `isIOS()` are exported if you want to branch yourself.
 
@@ -178,14 +221,7 @@ motion (drag, inflate, jelly, springs, merging) is JavaScript and is identical e
 
 Switches are `role="switch"`, sliders `role="slider"` (arrows / Home / End), nav bars are
 `navigation` / `radiogroup` / `tablist` with arrow-key support, buttons respond to Enter and Space.
-With `prefers-reduced-motion` springs stop bouncing, jelly turns off and `LiquidSplitLens auto` stays still.
-
-## Performance
-
-Maps are generated once per geometry and cached. `LiquidMerge` redraws only when its geometry really
-changes: a cheap map (0.75×) while things move, about 2–6 ms per frame for the split lens and the tab
-bar, then one full-resolution pass after 160 ms of stillness. Prefer fewer, larger glass elements over many
-tiny ones; each refracting element is its own filter.
+With `prefers-reduced-motion` springs stop bouncing, jelly turns off, `LiquidSplitLens auto` stays still and the favicon shows one frame.
 
 ## Layout of this folder
 
@@ -195,5 +231,5 @@ package.json          peer deps + export map (so the folder can be linked like a
 styles/               liquid-glass.css (imported by index.js)
 core/                 LiquidGlass, LiquidFilter, LiquidMerge (+ LiquidBlob)
 components/           the presets (Nav, Switch, Slider, SwipeView, BottomNav, …) and icons
-lib/                  optics (Snell's law, maps), sdf (merged maps), motion hook, utils
+lib/                  optics (Snell's law, maps), sdf (merged maps), quality profiles, favicon, motion hook, utils
 ```

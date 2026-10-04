@@ -1,4 +1,5 @@
 import { SURFACES } from "./surfaces.js";
+import { getQuality } from "./quality.js";
 
 /* -------------------------------------------------------------------------- */
 /* 1. Physics: how far does a vertical ray get pushed sideways by the bezel?   */
@@ -172,8 +173,8 @@ const cache = new Map();
 
 export function getDevicePixelRatio() {
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-  // Render maps at ≥2× so bezel edges stay crisp; cap at 3× for memory.
-  return Math.max(2, Math.min(3, Math.ceil(dpr)));
+  // Maps only need enough resolution for crisp bezel edges; weaker devices get less.
+  return Math.max(1, Math.min(getQuality().mapDpr, dpr));
 }
 
 /**

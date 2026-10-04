@@ -1,14 +1,14 @@
 import { createContext, forwardRef, useCallback, useContext, useEffect, useId, useMemo, useRef } from "react";
 import { isMotionValue, motion, useTransform } from "motion/react";
 import { drawMerged, getProfile } from "../lib/sdf.js";
-import { getDevicePixelRatio } from "../lib/optics.js";
+import { getQuality } from "../lib/quality.js";
 import { useLiquidMotion } from "../lib/useLiquidMotion.js";
-import { supportsSvgBackdrop, useMv } from "../lib/utils.js";
+import { supportsSvgBackdrop, useForwardedRef, useMv, useNearViewport } from "../lib/utils.js";
 
 const MergeContext = createContext(null);
 
-const MOVE_SCALE = 0.75; // map resolution while things are moving (cheap)
-const IDLE_MS = 160; // …then re-render once at full resolution
+const IDLE_MS = 140; // …then re-render once, sharper, after things have been still this long
+const OVERSCAN = 6; // px the glass layer extends past the container (clipped away again, see below)
 
 const parseRGB = (s) => String(s).split(",").map((v) => parseFloat(v));
 
@@ -22,6 +22,8 @@ const parseRGB = (s) => String(s).split(",").map((v) => parseFloat(v));
  * shapes: their size, press-inflate and jelly feed straight into the geometry.
  *
  * The container is click-through; only blobs (and their children) take input.
+ * It may be as large as you like (e.g. a whole stage): work is limited to the
+ * area the blobs cover, and nothing is drawn while it is off-screen.
  */
 export const LiquidMerge = forwardRef(function LiquidMerge(
   {
@@ -33,7 +35,7 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
     refractiveIndex = 1.5,
     bezelType = "convex",
     refraction = 1, // 0..1 (number | MotionValue)
-    dispersion = 0.04,
+    dispersion, // chromatic fringe (default: on for "high" quality, off otherwise)
     tint = 0.05,
     tintColor = "255,255,255",
     specularOpacity = 0.5,
@@ -48,31 +50,37 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
 ) {
   const filterId = "lm" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const svgBackdrop = useMemo(supportsSvgBackdrop, []);
+  const quality = getQuality();
+  const disp = dispersion ?? (quality.dispersion ? 0.04 : 0);
   const profile = useMemo(
     () => getProfile({ glassThickness, bezelWidth, refractiveIndex, bezelType }),
     [glassThickness, bezelWidth, refractiveIndex, bezelType],
   );
 
+  const [rootRef, setRootRef] = useForwardedRef(ref);
+  const near = useNearViewport(rootRef);
   const feImageRef = useRef(null);
   const glassRef = useRef(null);
   const shadeRef = useRef(null);
   const blobs = useRef(new Map());
-  const st = useRef({ raf: 0, timer: 0, scratch: {} });
+  const st = useRef({ raf: 0, timer: 0, scratch: {}, ema: 0, moveScale: quality.moveScale });
   const cfg = useRef();
-  cfg.current = { width, height, bezelWidth, profile, tintColor, tint, specularOpacity, shadow, smoothing };
+  cfg.current = { width, height, bezelWidth, profile, tintColor, tint, specularOpacity, shadow, smoothing, near };
 
   const draw = useCallback(
-    (scale, geoms) => {
+    (hi, geoms) => {
       const c = cfg.current;
+      const s = st.current;
       if (!shadeRef.current) return;
-
-      if (!geoms.length) {
-        // no blobs (yet): draw nothing — never a rectangle
-        shadeRef.current.style.backgroundImage = "none";
+      const clear = () => {
+        const cv = shadeRef.current;
+        cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
         if (glassRef.current) glassRef.current.style.webkitMaskImage = glassRef.current.style.maskImage = "none";
-        return;
-      }
+      };
+      if (!geoms.length || !c.near) return clear();
 
+      const t0 = performance.now();
+      const q = getQuality();
       const out = drawMerged({
         width: c.width,
         height: c.height,
@@ -80,49 +88,75 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
         smoothing: isMotionValue(c.smoothing) ? c.smoothing.get() : c.smoothing,
         bezelWidth: c.bezelWidth,
         profile: c.profile,
-        scale,
+        scale: hi ? q.idleScale : s.moveScale,
+        maxPixels: hi ? q.idleMaxPx : q.moveMaxPx,
         tintRGB: parseRGB(c.tintColor),
         tintAlpha: c.tint,
         specularOpacity: c.specularOpacity,
         shadow: c.shadow,
         wantDisplacement: svgBackdrop,
-        wantMask: true, // clip the glass to the merged shape (also removes the container's rectangle)
-        scratch: st.current.scratch,
+        wantMask: !svgBackdrop, // only the CSS fallback needs a clip mask
+        shadeCanvas: shadeRef.current,
+        scratch: s.scratch,
       });
-      if (out.displacement && feImageRef.current) feImageRef.current.setAttribute("href", out.displacement);
-      shadeRef.current.style.backgroundImage = `url(${out.shade})`;
+      if (!out) return clear();
+
+      const { roi } = out;
+      const cv = shadeRef.current;
+      cv.style.left = roi.x + "px";
+      cv.style.top = roi.y + "px";
+      cv.style.width = roi.w + "px";
+      cv.style.height = roi.h + "px";
+
+      if (out.displacement && feImageRef.current) {
+        const im = feImageRef.current;
+        im.setAttribute("x", roi.x + OVERSCAN);
+        im.setAttribute("y", roi.y + OVERSCAN);
+        im.setAttribute("width", roi.w);
+        im.setAttribute("height", roi.h);
+        im.setAttribute("href", out.displacement);
+      }
       if (out.mask && glassRef.current) {
-        glassRef.current.style.webkitMaskImage = glassRef.current.style.maskImage = `url(${out.mask})`;
+        const g = glassRef.current.style;
+        g.webkitMaskImage = g.maskImage = `url(${out.mask})`;
+        g.webkitMaskSize = g.maskSize = `${roi.w}px ${roi.h}px`;
+        g.webkitMaskPosition = g.maskPosition = `${roi.x}px ${roi.y}px`;
+      }
+
+      // adapt: if drawing is eating the frame budget, drop the resolution used while moving
+      if (!hi) {
+        s.ema = s.ema ? s.ema * 0.8 + (performance.now() - t0) * 0.2 : performance.now() - t0;
+        if (s.ema > 9) s.moveScale = Math.max(0.3, s.moveScale * 0.85);
+        else if (s.ema < 4) s.moveScale = Math.min(q.moveScale, s.moveScale * 1.06);
       }
     },
     [svgBackdrop],
   );
 
-  // Redraw only when the geometry really changed (MotionValues emit lots of tiny/no-op
-  // updates). Cheap map while moving, one full-resolution map once it settles.
+  // Redraw only when the geometry really changed (MotionValues emit lots of tiny/no-op updates).
   const schedule = useCallback(
     (force) => {
       const s = st.current;
       if (force === true) s.sig = null;
       if (s.raf) {
-        if (force === true) {
-          cancelAnimationFrame(s.raf);
-          s.raf = 0;
-        } else {
-          return;
-        }
+        if (force !== true) return;
+        cancelAnimationFrame(s.raf);
+        s.raf = 0;
       }
       s.raf = requestAnimationFrame(() => {
         s.raf = 0;
         const geoms = [...blobs.current.values()].map((b) => b.getGeom());
         const k = isMotionValue(cfg.current.smoothing) ? cfg.current.smoothing.get() : cfg.current.smoothing;
         const sig = geoms.map((g) => [g.x, g.y, g.w, g.h, g.r].map((v) => v.toFixed(1)).join(",")).join("|") + "|" + k.toFixed(1);
-        if (sig === s.sig && !force) return;
+        if (sig === s.sig && force !== true) return;
         s.sig = sig;
-        draw(MOVE_SCALE, geoms);
+        draw(false, geoms);
         clearTimeout(s.timer);
         s.timer = setTimeout(() => {
-          draw(Math.min(2, getDevicePixelRatio()), [...blobs.current.values()].map((b) => b.getGeom()));
+          const sharp = () => draw(true, [...blobs.current.values()].map((b) => b.getGeom()));
+          // do the one-off sharp pass when the browser is idle, so it can never hitch an interaction
+          if (typeof requestIdleCallback === "function") requestIdleCallback(sharp, { timeout: 400 });
+          else sharp();
         }, IDLE_MS);
       });
     },
@@ -146,10 +180,10 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
     [schedule],
   );
 
-  // redraw when static props change
+  // redraw when static props change, or when the body scrolls into / out of view
   useEffect(() => {
     schedule(true);
-  }, [schedule, width, height, bezelWidth, glassThickness, refractiveIndex, bezelType, tint, tintColor, specularOpacity, shadow, svgBackdrop]);
+  }, [schedule, width, height, bezelWidth, glassThickness, refractiveIndex, bezelType, tint, tintColor, specularOpacity, shadow, svgBackdrop, near]);
   useEffect(() => {
     if (!isMotionValue(smoothing)) return;
     return smoothing.on("change", () => schedule());
@@ -164,23 +198,28 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
 
   /* SVG filter values */
   const ratioMv = useMv(refraction);
-  const dispMv = useMv(dispersion);
-  const hasDispersion = dispersion !== 0;
+  const dispMv = useMv(disp);
+  const hasDispersion = disp !== 0;
   const scaleG = useTransform(() => profile.maxDisplacement * ratioMv.get());
   const scaleR = useTransform(() => profile.maxDisplacement * ratioMv.get() * (1 - dispMv.get()));
   const scaleB = useTransform(() => profile.maxDisplacement * ratioMv.get() * (1 + dispMv.get()));
 
-  const backdrop = svgBackdrop
-    ? `url(#${filterId})`
-    : `${fallbackBlur ? `blur(${fallbackBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
+  const backdrop = !near
+    ? "none"
+    : svgBackdrop
+      ? `url(#${filterId})`
+      : `${fallbackBlur ? `blur(${fallbackBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
 
   return (
-    <div ref={ref} className={`lg-merge ${className}`} style={{ width, height, ...style }} {...rest}>
-      {svgBackdrop && (
+    <div ref={setRootRef} className={`lg-merge ${className}`} style={{ width, height, ...style }} {...rest}>
+      {svgBackdrop && near && (
         <svg className="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
           <defs>
             <filter id={filterId} colorInterpolationFilters="sRGB">
-              <feImage ref={feImageRef} x={0} y={0} width={width} height={height} result="map" />
+              {/* neutral (no displacement) everywhere; the generated map covers only the blobs' region */}
+              <feFlood floodColor="rgb(128,128,0)" result="neutral" />
+              <feImage ref={feImageRef} x={0} y={0} width={1} height={1} result="img" />
+              <feBlend in="img" in2="neutral" mode="normal" result="map" />
               {hasDispersion ? (
                 <>
                   <motion.feDisplacementMap in="SourceGraphic" in2="map" scale={scaleR} xChannelSelector="R" yChannelSelector="G" result="dr" />
@@ -199,8 +238,12 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
           </defs>
         </svg>
       )}
-      <div ref={glassRef} className="lg-merge-glass" style={{ backdropFilter: backdrop, WebkitBackdropFilter: backdrop }} />
-      <div ref={shadeRef} className="lg-merge-shade" />
+      <div
+        ref={glassRef}
+        className={`lg-merge-glass${svgBackdrop ? " lg-merge-glass--svg" : ""}`}
+        style={{ backdropFilter: backdrop, WebkitBackdropFilter: backdrop }}
+      />
+      <canvas ref={shadeRef} className="lg-merge-shade" />
       <MergeContext.Provider value={ctx}>{children}</MergeContext.Provider>
     </div>
   );

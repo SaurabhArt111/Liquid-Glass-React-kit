@@ -22,11 +22,12 @@ import { LiquidSwitch, LiquidSwipeView, LiquidBottomNav } from "./liquid-glass";
 
 ## The demo (`src/demo/`)
 
-Home · Kit · Split lens (drag + auto) · Mobile split lens (swipe) · Any div · Playground · Usage, plus an
+Home · Kit · Split lens (autoplay + drag, full-stage) · Mobile split lens (swipe) · Any div · Playground · Usage, plus an
 About page (`#/about`). On phones the navigation becomes a bottom tab bar. Light / dark theme via the
 glass theme switch.
 
 - `?glass=css` previews the iOS (non-refracting) look in any browser.
+- The tab icon is a live liquid-glass favicon (`startLiquidFavicon`); static versions are in `public/`.
 - The stage backgrounds use a hotlinked photo with gradient fallbacks underneath; self-host it by
   putting an image in `public/` and changing the URL in `src/demo/demo.css`.
 

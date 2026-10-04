@@ -26,6 +26,7 @@ export const LiquidButton = forwardRef(function LiquidButton(
       specularSaturation={6}
       restScale={0.94}
       activeScale={1.08}
+      holdMs={320}
       onClick={disabled ? undefined : onClick}
       onKeyDown={(e) => {
         if (!disabled && (e.key === "Enter" || e.key === " ")) {

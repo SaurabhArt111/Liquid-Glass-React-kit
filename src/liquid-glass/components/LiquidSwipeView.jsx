@@ -30,6 +30,7 @@ export function LiquidSwipeView({
   itemWidth,
   barHeight = 62,
   edge = true,
+  edgeRadius = 0, // corner radius of the frame this view sits in (see LiquidScrollEdge)
   className = "",
   style,
   tabsProps,
@@ -95,7 +96,7 @@ export function LiquidSwipeView({
           </section>
         ))}
       </motion.div>
-      {edge && <LiquidScrollEdge position="bottom" height={130} />}
+      {edge && <LiquidScrollEdge position="bottom" height={130} radius={edgeRadius} />}
       <div className="lg-swipeview-bar">
         <LiquidSwipeTabs
           items={pages.map((p, i) => ({ value: p.key ?? i, label: p.label, icon: p.icon }))}
