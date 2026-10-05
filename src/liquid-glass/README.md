@@ -189,15 +189,17 @@ light and shadow, in about 1.5 ms per frame. Pauses while the tab is hidden, sho
 
 Glass is expensive, so the kit is built to do as little as possible:
 
-- **Quality profiles.** `configureLiquidGlass({ quality: "high" | "balanced" | "low" })`, detected from the device
-  by default (touch screens and ≤ 4 cores / ≤ 4 GB → `balanced`). Lower profiles use smaller maps, lower
-  resolution while things move and **no chromatic dispersion** (which triples the filter work of every element).
+- **Quality profiles.** `configureLiquidGlass({ quality: "high" | "balanced" | "low" })`, detected from the device by
+  default (touch screens and ≤ 4 cores / ≤ 4 GB → `balanced`; ≤ 2 cores / ≤ 2 GB → `low`). **Resolution always follows
+  the screen's pixel density**: glass is crisp on a 3× phone. The tiers differ only in budgets and in chromatic
+  dispersion (only `high` has it, since it triples each element's filter work). `?quality=low|balanced|high` in the URL
+  switches tier for comparison.
 - **Off-screen glass is free.** Every glass element drops its backdrop filter while it is more than ~240 px
   outside the viewport (and `LiquidMerge` stops drawing).
 - **Merged glass only draws what it covers.** `LiquidMerge` works inside the bounding box of its blobs, never the
-  whole container, so it can fill a large stage. About 2–6 ms per frame while moving (≈ 3 ms on `balanced`) plus one
-  sharper pass, run when the browser is idle, after 140 ms of stillness. The shade is painted onto a canvas, so
-  nothing is encoded to an image except the displacement map. It adapts its resolution if frames get expensive.
+  whole container, so it can fill a large stage. Moving glass draws at close to display density (≈ 2–6 ms a frame on a laptop) and re-renders once at the full
+  density, when the browser is idle, 90 ms after things stop. The shade is painted onto a canvas, so
+  nothing is encoded to an image except the displacement map. If frames get clearly slow it steps its resolution down, never below about half the display density, and recovers when it can.
 - No `will-change` layers: Motion promotes elements only while they animate.
 - Prefer fewer, larger glass elements over many tiny ones; each refracting element is its own filter.
 

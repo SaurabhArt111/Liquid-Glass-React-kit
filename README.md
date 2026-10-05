@@ -31,6 +31,16 @@ glass theme switch.
 - The stage backgrounds use a hotlinked photo with gradient fallbacks underneath; self-host it by
   putting an image in `public/` and changing the URL in `src/demo/demo.css`.
 
+## Look and font
+
+The demo uses Apple's design language: a white page with light-gray tiles, near-black `#1d1d1f` text, `#0071e3` blue,
+big semibold tracking-tight headings (Apple dark when you switch the theme). Apple white is the default; the choice is
+remembered. The font stack is `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, …`: on Apple
+devices that resolves to the real SF Pro through the system font, and Windows / Android get Inter, the closest free web
+font. (SF Pro itself isn't bundled: Apple's licence only allows it on Apple platforms, which is what `-apple-system` is for.)
+The library components inherit the page font and read their colours from the CSS variables in
+[`src/liquid-glass/README.md`](src/liquid-glass/README.md#theming), so they follow any theme.
+
 ## Notes
 
 - The original project ships without a LICENSE file. Check its terms before redistributing, and credit it.

@@ -1,12 +1,16 @@
 /**
- * Quality profiles. Refraction is GPU/CPU heavy, so weaker devices (phones, ≤4 cores, ≤4 GB)
- * default to "balanced": cheaper maps and no chromatic dispersion (which triples the displacement
- * work of every glass element). Override with configureLiquidGlass({ quality }).
+ * Quality profiles.
+ *
+ * Resolution follows the device's pixel density — glass must be crisp on a 3× phone screen — so the
+ * profiles only differ in *budgets*: how many pixels merged glass may draw per frame, and whether the
+ * (costly) chromatic dispersion is on (only "high" has it). Weak devices ("low": ≤ 2 cores / ≤ 2 GB) also get lower resolution.
+ * Merged glass additionally steps its resolution down automatically if frames genuinely get slow, and
+ * back up when they recover, so a fast phone is never penalised for a slow one.
  */
 export const PROFILES = {
-  high: { mapDpr: 2, moveScale: 0.75, idleScale: 2, moveMaxPx: 140000, idleMaxPx: 420000, dispersion: true },
-  balanced: { mapDpr: 1.5, moveScale: 0.55, idleScale: 1.25, moveMaxPx: 80000, idleMaxPx: 200000, dispersion: false },
-  low: { mapDpr: 1, moveScale: 0.4, idleScale: 1, moveMaxPx: 45000, idleMaxPx: 90000, dispersion: false },
+  high: { mapDpr: 3, moveBase: 1, moveMaxPx: 320000, idleMaxPx: 1600000, dispersion: true },
+  balanced: { mapDpr: 3, moveBase: 0.85, moveMaxPx: 220000, idleMaxPx: 1200000, dispersion: false },
+  low: { mapDpr: 2, moveBase: 0.6, moveMaxPx: 90000, idleMaxPx: 450000, dispersion: false },
 };
 
 let current;
@@ -25,9 +29,29 @@ export function setQuality(name) {
 }
 
 export function getQualityName() {
-  return current ?? (current = detectQuality());
+  if (current) return current;
+  // dev override: ?quality=high | balanced | low
+  const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("quality") : null;
+  return (current = PROFILES[q] ? q : detectQuality());
 }
 
 export function getQuality() {
   return PROFILES[getQualityName()];
+}
+
+const dpr = () => (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1);
+
+/** canvas px per css px while glass is moving (cheap, but still close to native sharpness) */
+export function moveScaleFor(profile = getQuality()) {
+  return Math.max(0.7, Math.min(2, dpr()) * profile.moveBase);
+}
+
+/** canvas px per css px for the settled, sharp pass: the device's real pixel density */
+export function idleScaleFor(profile = getQuality()) {
+  return Math.max(1.5, Math.min(3, dpr())) * (profile.moveBase < 0.7 ? 0.75 : 1);
+}
+
+/** the lowest resolution the adaptive step-down may reach while moving: about half the display density */
+export function moveFloorFor() {
+  return Math.max(1, Math.min(2, dpr()) * 0.5);
 }

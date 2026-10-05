@@ -60,7 +60,7 @@ export function About() {
   const lensW = Math.min(620, vw - 96);
   return (
     <div className="about">
-      <section className="stage stage--aurora about-hero" id="about-top">
+      <section className="stage stage--soft about-hero" id="about-top">
         <p className="eyebrow">About</p>
         <h1 className="about-title">
           Liquid Glass,

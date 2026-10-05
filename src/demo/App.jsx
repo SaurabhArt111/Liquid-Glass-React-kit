@@ -55,7 +55,7 @@ function usePhoneWidth() {
 }
 
 function useTheme() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "dark");
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
@@ -240,7 +240,7 @@ function Hero() {
   const stageRef = useRef(null);
   const small = useViewportWidth() < 640;
   return (
-    <Stage variant="aurora" className="hero" stageRef={stageRef}>
+    <Stage variant="soft" className="hero" stageRef={stageRef}>
       <h1 className="hero-title">
         Glass that
         <br />

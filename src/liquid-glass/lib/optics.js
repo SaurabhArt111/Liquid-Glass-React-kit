@@ -173,8 +173,9 @@ const cache = new Map();
 
 export function getDevicePixelRatio() {
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-  // Maps only need enough resolution for crisp bezel edges; weaker devices get less.
-  return Math.max(1, Math.min(getQuality().mapDpr, dpr));
+  // Single-glass maps are generated once and cached, so full density costs nothing per frame:
+  // render them at the screen's pixel density (at least 2×) so bezel edges and the rim light stay crisp.
+  return Math.max(2, Math.min(getQuality().mapDpr, Math.ceil(dpr)));
 }
 
 /**

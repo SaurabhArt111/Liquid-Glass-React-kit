@@ -1,13 +1,13 @@
 import { createContext, forwardRef, useCallback, useContext, useEffect, useId, useMemo, useRef } from "react";
 import { isMotionValue, motion, useTransform } from "motion/react";
 import { drawMerged, getProfile } from "../lib/sdf.js";
-import { getQuality } from "../lib/quality.js";
+import { getQuality, idleScaleFor, moveFloorFor, moveScaleFor } from "../lib/quality.js";
 import { useLiquidMotion } from "../lib/useLiquidMotion.js";
 import { supportsSvgBackdrop, useForwardedRef, useMv, useNearViewport } from "../lib/utils.js";
 
 const MergeContext = createContext(null);
 
-const IDLE_MS = 140; // …then re-render once, sharper, after things have been still this long
+const IDLE_MS = 90; // …then re-render once at the device's full pixel density after things have been still this long
 const OVERSCAN = 6; // px the glass layer extends past the container (clipped away again, see below)
 
 const parseRGB = (s) => String(s).split(",").map((v) => parseFloat(v));
@@ -63,7 +63,7 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
   const glassRef = useRef(null);
   const shadeRef = useRef(null);
   const blobs = useRef(new Map());
-  const st = useRef({ raf: 0, timer: 0, scratch: {}, ema: 0, moveScale: quality.moveScale });
+  const st = useRef({ raf: 0, timer: 0, scratch: {}, ema: 0, moveScale: moveScaleFor(quality) });
   const cfg = useRef();
   cfg.current = { width, height, bezelWidth, profile, tintColor, tint, specularOpacity, shadow, smoothing, near };
 
@@ -88,7 +88,7 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
         smoothing: isMotionValue(c.smoothing) ? c.smoothing.get() : c.smoothing,
         bezelWidth: c.bezelWidth,
         profile: c.profile,
-        scale: hi ? q.idleScale : s.moveScale,
+        scale: hi ? idleScaleFor(q) : s.moveScale,
         maxPixels: hi ? q.idleMaxPx : q.moveMaxPx,
         tintRGB: parseRGB(c.tintColor),
         tintAlpha: c.tint,
@@ -126,8 +126,10 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
       // adapt: if drawing is eating the frame budget, drop the resolution used while moving
       if (!hi) {
         s.ema = s.ema ? s.ema * 0.8 + (performance.now() - t0) * 0.2 : performance.now() - t0;
-        if (s.ema > 9) s.moveScale = Math.max(0.3, s.moveScale * 0.85);
-        else if (s.ema < 4) s.moveScale = Math.min(q.moveScale, s.moveScale * 1.06);
+        // only when frames are clearly slow: step the resolution down (never below ~half the display density,
+        // so motion never turns blocky), and back up when it recovers
+        if (s.ema > 15) s.moveScale = Math.max(moveFloorFor(), s.moveScale * 0.92);
+        else if (s.ema < 8) s.moveScale = Math.min(moveScaleFor(q), s.moveScale * 1.08);
       }
     },
     [svgBackdrop],
