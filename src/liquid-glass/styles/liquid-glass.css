@@ -54,7 +54,6 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  backdrop-filter: blur(0.1rem);
 }
 
 /* ---------------------------------- Searchbox --------------------------------- */
@@ -201,6 +200,7 @@
 .lg-nav-inner {
   position: relative;
   flex: none;
+  backdrop-filter: blur(0.06rem);
 }
 
 .lg-nav-items {
