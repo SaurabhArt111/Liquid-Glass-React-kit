@@ -1,9 +1,11 @@
-import { createContext, forwardRef, useCallback, useContext, useEffect, useId, useMemo, useRef } from "react";
+import { createContext, forwardRef, useCallback, useContext, useEffect, useId, useMemo, useRef, useSyncExternalStore } from "react";
 import { isMotionValue, motion, useTransform } from "motion/react";
 import { drawMerged, getProfile } from "../lib/sdf.js";
 import { getQuality, idleScaleFor, moveFloorFor, moveScaleFor } from "../lib/quality.js";
 import { useLiquidMotion } from "../lib/useLiquidMotion.js";
-import { supportsSvgBackdrop, useForwardedRef, useMv, useNearViewport } from "../lib/utils.js";
+import { supportsSvgBackdrop, useForwardedRef, useGlassSlot, useMv, useQuality } from "../lib/utils.js";
+
+const noopSub = () => () => {};
 
 const MergeContext = createContext(null);
 
@@ -41,6 +43,7 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
     specularOpacity = 0.5,
     shadow = 1,
     fallbackBlur = 3,
+    priority = 1, // merged glass is usually the hero: it keeps refracting first when the budget is exceeded
     className = "",
     style,
     children,
@@ -49,8 +52,8 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
   ref,
 ) {
   const filterId = "lm" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const svgBackdrop = useMemo(supportsSvgBackdrop, []);
-  const quality = getQuality();
+  const canRefract = useSyncExternalStore(noopSub, supportsSvgBackdrop, () => false);
+  const [, quality] = useQuality();
   const disp = dispersion ?? (quality.dispersion ? 0.04 : 0);
   const profile = useMemo(
     () => getProfile({ glassThickness, bezelWidth, refractiveIndex, bezelType }),
@@ -58,14 +61,16 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
   );
 
   const [rootRef, setRootRef] = useForwardedRef(ref);
-  const near = useNearViewport(rootRef);
+  const { near, refract } = useGlassSlot(rootRef, { area: width * height, priority });
+  const svgBackdrop = canRefract && refract && quality.budget > 0;
   const feImageRef = useRef(null);
+  const filterRef = useRef(null);
   const glassRef = useRef(null);
   const shadeRef = useRef(null);
   const blobs = useRef(new Map());
   const st = useRef({ raf: 0, timer: 0, scratch: {}, ema: 0, moveScale: moveScaleFor(quality) });
   const cfg = useRef();
-  cfg.current = { width, height, bezelWidth, profile, tintColor, tint, specularOpacity, shadow, smoothing, near };
+  cfg.current = { width, height, bezelWidth, profile, tintColor, tint, specularOpacity, shadow, smoothing, near, kValue: isMotionValue(smoothing) ? smoothing.get() : smoothing };
 
   const draw = useCallback(
     (hi, geoms) => {
@@ -75,7 +80,10 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
       const clear = () => {
         const cv = shadeRef.current;
         cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
-        if (glassRef.current) glassRef.current.style.webkitMaskImage = glassRef.current.style.maskImage = "none";
+        if (glassRef.current) {
+          glassRef.current.style.webkitMaskImage = glassRef.current.style.maskImage = "none";
+          if (svgBackdrop) glassRef.current.style.width = glassRef.current.style.height = "0px";
+        }
       };
       if (!geoms.length || !c.near) return clear();
 
@@ -108,10 +116,37 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
       cv.style.width = roi.w + "px";
       cv.style.height = roi.h + "px";
 
-      if (out.displacement && feImageRef.current) {
+      if (out.displacement && feImageRef.current && glassRef.current) {
+        /*
+         * The backdrop-filter layer covers only the blobs (plus the neck's reach), not the whole container.
+         * Filtering the container's full rectangle wasted pixels, and where the container is wider than the
+         * screen (phones) Chromium mirrors page content at the viewport edge: backwards text above a dock.
+         */
+        const pad = Math.ceil(c.kValue * 0.3) + 3;
+        let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        for (const g of geoms) {
+          bx0 = Math.min(bx0, g.x - g.w / 2);
+          bx1 = Math.max(bx1, g.x + g.w / 2);
+          by0 = Math.min(by0, g.y - g.h / 2);
+          by1 = Math.max(by1, g.y + g.h / 2);
+        }
+        const gx = Math.max(0, Math.floor(bx0 - pad));
+        const gy = Math.max(0, Math.floor(by0 - pad));
+        const gw = Math.max(1, Math.min(c.width, Math.ceil(bx1 + pad)) - gx);
+        const gh = Math.max(1, Math.min(c.height, Math.ceil(by1 + pad)) - gy);
+        const gs = glassRef.current.style;
+        gs.left = gx - OVERSCAN + "px";
+        gs.top = gy - OVERSCAN + "px";
+        gs.width = gw + OVERSCAN * 2 + "px";
+        gs.height = gh + OVERSCAN * 2 + "px";
+        const f = filterRef.current;
+        if (f) {
+          f.setAttribute("width", gw + OVERSCAN * 2);
+          f.setAttribute("height", gh + OVERSCAN * 2);
+        }
         const im = feImageRef.current;
-        im.setAttribute("x", roi.x + OVERSCAN);
-        im.setAttribute("y", roi.y + OVERSCAN);
+        im.setAttribute("x", roi.x - gx + OVERSCAN);
+        im.setAttribute("y", roi.y - gy + OVERSCAN);
         im.setAttribute("width", roi.w);
         im.setAttribute("height", roi.h);
         im.setAttribute("href", out.displacement);
@@ -217,7 +252,7 @@ export const LiquidMerge = forwardRef(function LiquidMerge(
       {svgBackdrop && near && (
         <svg className="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
           <defs>
-            <filter id={filterId} colorInterpolationFilters="sRGB">
+            <filter ref={filterRef} id={filterId} x={0} y={0} width={width} height={height} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
               {/* neutral (no displacement) everywhere; the generated map covers only the blobs' region */}
               <feFlood floodColor="rgb(128,128,0)" result="neutral" />
               <feImage ref={feImageRef} x={0} y={0} width={1} height={1} result="img" />

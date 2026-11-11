@@ -1,8 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./demo/App.jsx";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
+import App from "./site/App.jsx";
 import { startLiquidFavicon } from "./liquid-glass";
-import "./demo/demo.css";
+import "./site/site.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -10,5 +12,5 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>,
 );
 
-// the tab icon is liquid glass too: two lenses melting together and splitting apart (pauses when the tab is hidden)
+// the tab icon is liquid glass too (pauses when the tab is hidden)
 startLiquidFavicon();

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { setQuality } from "./quality.js";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { getQuality, getQualityName, getQualityVersion, setQuality, startGovernor, subscribeQuality } from "./quality.js";
 import { isMotionValue, useMotionValue } from "motion/react";
 
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -22,8 +22,8 @@ let modeOverride; // set by configureLiquidGlass()
  *   mode:    "auto" (default) → refraction on Chromium, CSS glass elsewhere
  *            "refraction"     → always use SVG refraction
  *            "css"            → always use the CSS-only glass (cheapest, works everywhere)
- *   quality: "high" | "balanced" | "low" (default: detected from the device). Lower = cheaper maps,
- *            no chromatic dispersion, lower resolution while moving.
+ *   quality: "auto" (default: detected from the device and adapted to measured frame times) or a fixed tier:
+ *            "ultra" | "high" | "balanced" | "low" | "css". Lower = cheaper maps, no dispersion, smaller refraction budget.
  */
 export function configureLiquidGlass({ mode, quality } = {}) {
   if (mode) modeOverride = mode;
@@ -109,4 +109,69 @@ export function useForwardedRef(forwarded) {
     [forwarded],
   );
   return [inner, set];
+}
+
+
+/** Re-renders when the quality tier changes (device detection, governor step, or `setQuality`). */
+export function useQuality() {
+  useSyncExternalStore(subscribeQuality, getQualityVersion, getQualityVersion);
+  return [getQualityName(), getQuality()];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Refraction budget: only the N most important visible glass surfaces refract  */
+/* -------------------------------------------------------------------------- */
+
+const slots = new Map(); // id -> { near, area, priority }
+const slotSubs = new Set();
+let allowed = new Set();
+const sameSet = (a, b) => a.size === b.size && [...a].every((v) => b.has(v));
+
+function recompute() {
+  const budget = getQuality().budget;
+  const live = [...slots].filter(([, e]) => e.near).sort((a, b) => b[1].priority - a[1].priority || b[1].area - a[1].area);
+  const next = new Set(live.slice(0, budget).map(([id]) => id));
+  stats = { total: slots.size, visible: live.length, refracting: next.size, budget };
+  statSubs.forEach((f) => f());
+  if (sameSet(next, allowed)) return;
+  allowed = next;
+  slotSubs.forEach((f) => f());
+}
+
+let stats = { total: 0, visible: 0, refracting: 0, budget: 0 };
+const statSubs = new Set();
+/** Live counters for a performance HUD: glass surfaces mounted / near the viewport / currently refracting. */
+export function getGlassStats() {
+  return stats;
+}
+export function subscribeGlassStats(fn) {
+  statSubs.add(fn);
+  return () => statSubs.delete(fn);
+}
+subscribeQuality(recompute);
+
+/**
+ * Registers a glass surface. Returns `near` (is it close to the viewport) and `refract`
+ * (is it inside the refraction budget). Surfaces outside the budget fall back to CSS glass.
+ */
+export function useGlassSlot(ref, { area = 0, priority = 0 } = {}) {
+  const id = useId();
+  const near = useNearViewport(ref);
+  useEffect(() => {
+    startGovernor();
+  }, []);
+  useEffect(() => {
+    slots.set(id, { near, area, priority });
+    recompute();
+    return () => {
+      slots.delete(id);
+      recompute();
+    };
+  }, [id, near, area, priority]);
+  const refract = useSyncExternalStore(
+    (f) => (slotSubs.add(f), () => slotSubs.delete(f)),
+    () => allowed.has(id),
+    () => false,
+  );
+  return { near, refract };
 }

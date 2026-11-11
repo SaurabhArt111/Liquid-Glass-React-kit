@@ -1,0 +1,67 @@
+:root {
+  --lg-nav-fg: #fff;
+  --lg-nav-accent: #bcd2ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.stage {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(55% 85% at 12% 15%, #ff5f7e, transparent 62%),
+    radial-gradient(50% 75% at 88% 25%, #3f6bff, transparent 62%),
+    radial-gradient(60% 60% at 58% 105%, #ffc83d, transparent 62%),
+    #15183a;
+}
+
+h1 {
+  margin: 0;
+  padding: 12vh 8vw 0;
+  font-size: clamp(44px, 9vw, 120px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.label {
+  color: #fff;
+  font-weight: 700;
+}
+
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.tier {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2vh;
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+}
+
+.tier button {
+  margin-left: 6px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}

@@ -1,10 +1,28 @@
-import { forwardRef, useId, useMemo } from "react";
+import { forwardRef, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { LiquidFilter } from "./LiquidFilter.jsx";
-import { getSpecularMap } from "../lib/optics.js";
+import { loadGlassMaps, peekGlassMaps } from "../lib/optics.js";
 import { useLiquidMotion } from "../lib/useLiquidMotion.js";
-import { getQuality } from "../lib/quality.js";
-import { clamp, lerp, supportsSvgBackdrop, useForwardedRef, useMv, useNearViewport } from "../lib/utils.js";
+import { clamp, lerp, supportsSvgBackdrop, useForwardedRef, useGlassSlot, useQuality } from "../lib/utils.js";
+
+const noopSub = () => () => {};
+
+/** Generated maps for these optics (null until ready; cached across instances). Re-renders once when they arrive. */
+function useGlassMaps(enabled, opts) {
+  const key = [opts.width, opts.height, opts.radius, opts.bezelWidth, opts.glassThickness, opts.refractiveIndex, opts.bezelType, opts.magnify ? 1 : 0, opts.specular ? 1 : 0].join("|");
+  const [, force] = useState(0);
+  const hit = enabled ? peekGlassMaps(opts) : null;
+  useEffect(() => {
+    if (!enabled || hit) return;
+    let live = true;
+    loadGlassMaps(opts).then(() => live && force((n) => n + 1));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, key, hit]);
+  return hit;
+}
 
 // CSS-only "curved glass" sheen used where SVG refraction is unavailable (iOS/WebKit, Firefox)
 const SHEEN =
@@ -31,7 +49,9 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     bezelType = "convex", // 'convex' | 'circle' | 'concave' | 'lip'
     variant = "regular", // 'regular' | 'clear' (clear = see-through media glass; pair with `dim`)
     dim = 0, // 0..1 dark layer under the glass, keeps content legible on clear glass
-    dispersion, // chromatic fringe at the rim (0 = off; default: on for "high" quality only)
+    dispersion, // chromatic fringe at the rim (0 = off; default: on for the "high" and "ultra" tiers)
+    saturation = 1.1, // colour boost of the refracted backdrop (1 = off)
+    priority = 0, // higher = keeps refracting first when the refraction budget is exceeded
     glow = 0.5, // "illuminates from within" at the touch point (0 = off)
     blur,
     refraction = 1, // 0..1 — strength while active
@@ -74,16 +94,26 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   const r = Math.min(radius ?? height / 2, width / 2, height / 2);
   const bezel = Math.min(bezelWidth ?? Math.round(Math.min(width, height) * 0.3), r);
   const filterId = "lg" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const svgBackdrop = useMemo(supportsSvgBackdrop, []);
+  const canRefract = useSyncExternalStore(noopSub, supportsSvgBackdrop, () => false);
   const [rootRef, setRootRef] = useForwardedRef(ref);
-  const near = useNearViewport(rootRef); // glass that is far off-screen costs nothing
-  const disp = dispersion ?? (getQuality().dispersion ? 0.04 : 0);
-  const specUrl = useMemo(
-    () => (svgBackdrop || !near ? null : getSpecularMap({ width, height, radius: r })),
-    [svgBackdrop, near, width, height, r],
-  );
-  const specOpacityMv = useMv(specularOpacity ?? 0.5);
-  const specOverlayOpacity = useTransform(() => clamp(specOpacityMv.get() * 0.9, 0, 1));
+  const [, profile] = useQuality();
+  // `near`: glass far off-screen costs nothing. `refract`: inside the refraction budget (else CSS glass).
+  const { near, refract } = useGlassSlot(rootRef, { area: width * height, priority });
+  const wantSvg = canRefract && refract && profile.budget > 0;
+  const disp = dispersion ?? (profile.dispersion ? 0.04 : 0);
+  const maps = useGlassMaps(wantSvg, {
+    width,
+    height,
+    radius: r,
+    bezelWidth: bezel,
+    glassThickness,
+    refractiveIndex,
+    bezelType,
+    magnify: !!magnify,
+    specular: profile.rimInFilter,
+  });
+  // until the maps exist (a few ms), show the cheap CSS glass instead of an un-refracted flash
+  const svgBackdrop = wantSvg && !!maps;
 
   const clear = variant === "clear";
   const tintV = tint ?? (clear ? 0.01 : 0.05);
@@ -161,11 +191,22 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
     const blurPx = lerp(9, 24, t);
     const a = lerp(0.16, 0.22, t) * s;
     const ia = lerp(0.2, 0.27, t) * s;
+    // CSS rim light (all tiers except "ultra", which composites it inside the SVG filter): an inset
+    // shadow's thickness follows the cosine of the edge normal, i.e. exactly the |n·l| falloff of a
+    // specular rim, and it stays vector-sharp at any pixel density for free.
+    const ra = clamp(specV * 1.5, 0, 1);
+    const rim = profile.rimInFilter
+      ? []
+      : [
+          `inset -0.9px 1.5px 0.5px -0.2px rgba(255,255,255,${ra})`,
+          `inset 0.9px -1.5px 0.5px -0.2px rgba(255,255,255,${ra * 0.8})`,
+        ];
     return [
       `${sx}px ${sy}px ${blurPx}px rgba(0,0,0,${a})`,
       `inset ${sx / 2}px ${sy / 2}px 24px rgba(0,0,0,${ia * 0.6})`,
       `inset ${-sx / 2}px ${-sy / 2}px 24px rgba(255,255,255,${ia * 0.7})`,
       `inset 0 0 0 1px rgba(255,255,255,0.14)`,
+      ...rim,
     ].join(", ") + bloom;
   });
   const backgroundColor = useTransform(tintMv, (a) => `rgba(${tintColor},${a})`);
@@ -173,7 +214,7 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
   const backdropFilter = !near
     ? "none"
     : svgBackdrop
-      ? `url(#${filterId})`
+      ? `url(#${filterId})${saturation !== 1 && !profile.rimInFilter ? ` saturate(${saturation})` : ""}`
       : `${fbBlur ? `blur(${fbBlur}px) ` : ""}saturate(1.8) brightness(1.08)`;
 
   /* -------------------------------- dragging ------------------------------ */
@@ -213,11 +254,9 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           id={filterId}
           width={width}
           height={height}
-          radius={r}
-          bezelWidth={bezel}
-          glassThickness={glassThickness}
-          refractiveIndex={refractiveIndex}
-          bezelType={bezelType}
+          maps={maps}
+          blurPass={profile.blurPass}
+          rim={profile.rimInFilter}
           blur={blurV}
           dispersion={disp}
           scaleRatio={refractionMv}
@@ -238,12 +277,6 @@ export const LiquidGlass = forwardRef(function LiquidGlass(
           boxShadow,
         }}
       />
-      {!svgBackdrop && specUrl && (
-        <motion.div
-          className="lg-spec"
-          style={{ borderRadius: r, backgroundImage: `url(${specUrl})`, opacity: specOverlayOpacity }}
-        />
-      )}
       {glow > 0 && <motion.div className="lg-glow" style={{ borderRadius: r, backgroundImage: glowBg, opacity: glowOpacity }} />}
       {children != null && (
         <div className="lg-content" style={{ borderRadius: r }}>

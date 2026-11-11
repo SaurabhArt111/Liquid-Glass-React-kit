@@ -19,5 +19,16 @@ export { LiquidScrollEdge } from "./components/LiquidScrollEdge.jsx";
 export { LiquidThemeSwitch } from "./components/LiquidThemeSwitch.jsx";
 export { SunIcon, MoonIcon } from "./components/icons.jsx";
 export { SURFACES } from "./lib/surfaces.js";
-export { supportsSvgBackdrop, isIOS, configureLiquidGlass } from "./lib/utils.js";
+export { supportsSvgBackdrop, isIOS, configureLiquidGlass, useQuality, getGlassStats, subscribeGlassStats } from "./lib/utils.js";
+export {
+  TIERS,
+  PROFILES,
+  setQuality,
+  getQualityName,
+  getDetectedQuality,
+  isAutoQuality,
+  subscribeQuality,
+  onGovernorSample,
+  keepSampling,
+} from "./lib/quality.js";
 export { startLiquidFavicon, renderLiquidFavicon } from "./lib/favicon.js";

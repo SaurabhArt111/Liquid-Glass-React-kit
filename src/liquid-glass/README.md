@@ -76,8 +76,10 @@ touch glow and a lifting shadow.
 | `dim` | `0` | 0–1 dark layer under the glass so content stays legible |
 | `blur` | `0.2` | blur of the refracted backdrop (px) |
 | `refraction` / `restRefraction` | `1` / `0.8×` | strength while active / at rest (0–1) |
-| `dispersion` | `0.04` on `high` quality, `0` otherwise | rainbow fringe at the rim (0 = off) |
-| `specularOpacity`, `specularSaturation` | `0.5`, `6` | light rim + colour boost on it |
+| `dispersion` | `0.04` on `high` / `ultra`, `0` otherwise | rainbow fringe at the rim (0 = off) |
+| `saturation` | `1.1` | colour boost of the refracted backdrop (1 = off) |
+| `priority` | `0` | higher keeps refracting first when the tier's refraction budget is exceeded |
+| `specularOpacity`, `specularSaturation` | `0.5`, `6` | light rim strength; the colour boost on the rim applies in the `ultra` tier (other tiers use `saturation`) |
 | `magnify` / `restMagnify` | `0` / `0.5×` | zoom in the middle (0 = off) |
 | `tint` / `activeTint` / `tintColor` | `0.05` / = `tint` / `"255,255,255"` | overlay alpha at rest / active, colour as `"r,g,b"` |
 | `glow` | `0.5` | light that spreads from the touch point (0 = off) |
@@ -187,21 +189,69 @@ light and shadow, in about 1.5 ms per frame. Pauses while the tab is hidden, sho
 
 ## Performance
 
-Glass is expensive, so the kit is built to do as little as possible:
+Glass is expensive: each refracting surface is a GPU filter over a moving backdrop. v2 is built to do as little
+as possible while keeping the liquid shape (the Snell's-law bezel profile) identical in every tier.
 
-- **Quality profiles.** `configureLiquidGlass({ quality: "high" | "balanced" | "low" })`, detected from the device by
-  default (touch screens and ≤ 4 cores / ≤ 4 GB → `balanced`; ≤ 2 cores / ≤ 2 GB → `low`). **Resolution always follows
-  the screen's pixel density**: glass is crisp on a 3× phone. The tiers differ only in budgets and in chromatic
-  dispersion (only `high` has it, since it triples each element's filter work). `?quality=low|balanced|high` in the URL
-  switches tier for comparison.
-- **Off-screen glass is free.** Every glass element drops its backdrop filter while it is more than ~240 px
-  outside the viewport (and `LiquidMerge` stops drawing).
-- **Merged glass only draws what it covers.** `LiquidMerge` works inside the bounding box of its blobs, never the
-  whole container, so it can fill a large stage. Moving glass draws at close to display density (≈ 2–6 ms a frame on a laptop) and re-renders once at the full
-  density, when the browser is idle, 90 ms after things stop. The shade is painted onto a canvas, so
-  nothing is encoded to an image except the displacement map. If frames get clearly slow it steps its resolution down, never below about half the display density, and recovers when it can.
-- No `will-change` layers: Motion promotes elements only while they animate.
+### Quality tiers
+
+| Tier | Gets | Default on |
+|---|---|---|
+| `ultra` | chromatic dispersion, rim light inside the SVG filter, 2.5× maps, 24 refracting surfaces | desktops with ≥ 12 cores |
+| `high` | dispersion, CSS rim light, 2× maps, 12 surfaces | most desktops |
+| `balanced` | no dispersion, 1.5× maps, 7 surfaces | phones, tablets, ≤ 4 cores |
+| `low` | 1× maps, no blur pass, 3 surfaces | ≤ 2 cores or ≤ 2 GB |
+| `css` | no SVG refraction, frosted CSS glass | explicit choice (cheapest) |
+
+```js
+import { configureLiquidGlass, setQuality, useQuality } from "./liquid-glass";
+
+configureLiquidGlass({ quality: "auto" }); // once, before the first render. "auto" is the default
+setQuality("balanced");                    // pin a tier any time ("auto" hands control back)
+const [tier, profile] = useQuality();      // hook: re-renders when the tier changes
+```
+
+`?quality=ultra|high|balanced|low|css` in the URL pins a tier for comparison.
+
+### Adaptive governor (`quality: "auto"`)
+
+While the page is being scrolled or dragged, the governor samples real frame times (36-frame windows). Two bad
+windows in a row (p75 > 30 ms) step one tier down (never below `low`; `css` is only ever explicit). Eight good
+windows in a row (p75 < 18.5 ms) step back up, never above what the device was detected as. Decisions are
+rate-limited (6 s after a step down, 15 s after a step up) so it cannot oscillate. When the page is quiet it
+samples nothing: zero idle cost.
+
+### Refraction budget
+
+Only the N most important *visible* glass surfaces refract (N = the tier's budget). Importance = `priority` prop,
+then area. Everything else renders the CSS glass look, so a page with 40 glass elements stays smooth.
+`<LiquidGlass priority={5}>` marks the hero. `getGlassStats()` returns `{ total, visible, refracting, budget }`.
+
+### What got cheaper (and how it was checked)
+
+- **Filter region = the element.** SVG filters default to 120 % × 120 % of the box; now exactly the box.
+- **Maps are computed on the bezel ring only** (the flat middle is neutral), checked pixel-for-pixel against the
+  original generator for 6 shapes × 4 densities (`scripts/bench/test-optics.mjs` in the site repo).
+- **Maps are encoded off the main thread** (`toBlob` → blob URL) at the tier's density instead of a fixed 3×.
+  Until a map exists the surface shows the CSS glass (no flash of un-refracted content).
+- **No-op passes are not emitted**: a 0.2 px blur is invisible but costs a full pass; dispersion (3 displacement
+  passes) is per tier.
+- **Rim light in CSS** (inset shadows): vector-sharp at any pixel density, no `feImage`/composite chain.
+  `ultra` keeps the original in-filter rim.
+- **Merged glass only filters the blobs' region.** `LiquidMerge`'s backdrop layer used to cover its whole container;
+  on phones that made it wider than the screen, and Chromium mirrors page content at the viewport edge (backwards
+  text above a dock). It now covers just the blobs plus the neck's reach: 6× fewer pixels on a phone dock.
+- Off-screen glass drops its backdrop filter entirely; no `will-change` layers (Motion promotes only while animating).
 - Prefer fewer, larger glass elements over many tiny ones; each refracting element is its own filter.
+
+Measured on the original demo page with only the library swapped (headless Chrome, software GL, 4× CPU throttle,
+median of 3): desktop scroll 13.4 → 38.7 fps, phone emulation 19.2 → 33.4 fps. Relative numbers: real GPUs are faster.
+
+### If it still feels heavy
+
+1. `setQuality("balanced")` or `"low"`: the shape stays, extras go.
+2. Give heroes `priority`, and keep the number of simultaneously *visible* glass surfaces small.
+3. Avoid animating the content *behind* glass (a moving backdrop forces the filter to re-run every frame).
+4. `configureLiquidGlass({ mode: "css" })` for the cheapest look everywhere.
 
 ## Browser support
 
@@ -215,9 +265,15 @@ WebKit and Firefox can't run SVG filters in `backdrop-filter`, so there is no re
 motion (drag, inflate, jelly, springs, merging) is JavaScript and is identical everywhere.
 
 - `configureLiquidGlass({ mode, quality })` (call once, before the first render): `mode` is `"auto"` (default),
-  `"refraction"` or `"css"` (cheapest; forces the CSS look everywhere); `quality` is described under Performance.
+  `"refraction"` or `"css"` (forces the CSS look everywhere).
 - `?glass=css` / `?glass=svg` in the URL forces a mode, handy for previewing the iOS look on desktop.
 - `supportsSvgBackdrop()` and `isIOS()` are exported if you want to branch yourself.
+- **SSR / Next.js:** components are hydration-safe (server and first client render both show CSS glass, Chromium then
+  upgrades). Mount them in a client component (`"use client"`).
+
+## TypeScript
+
+`index.d.ts` ships in this folder: every component and the quality API are typed (`LiquidGlassProps`, `NavItem`, …).
 
 ## Accessibility
 
@@ -233,5 +289,6 @@ package.json          peer deps + export map (so the folder can be linked like a
 styles/               liquid-glass.css (imported by index.js)
 core/                 LiquidGlass, LiquidFilter, LiquidMerge (+ LiquidBlob)
 components/           the presets (Nav, Switch, Slider, SwipeView, BottomNav, …) and icons
-lib/                  optics (Snell's law, maps), sdf (merged maps), quality profiles, favicon, motion hook, utils
+lib/                  optics (Snell's law, ring-only async maps), sdf (merged maps), quality tiers + governor, refraction budget, favicon, motion hook, utils
+index.d.ts            TypeScript types
 ```

@@ -1,47 +1,48 @@
-# Liquid Glass for React (Vite)
+# Liquid Glass for React (Vite): v2
 
-Glass UI components that refract what's behind them, in plain React (JavaScript) and plain CSS.
-Based on Kube's article
-[Liquid Glass in the Browser: Refraction with CSS and SVG](https://kube.io/blog/liquid-glass-css-svg).
+The library, the dev-tools site and the downloadable kit, in one repo.
 
 ```bash
 npm install
-npm run dev      # the demo site
-npm run build
+npm run dev        # the site (also regenerates the download zips)
+npm run build      # production build → dist/
+npm run preview
+npm run pack       # rebuild public/downloads/*.zip only
 ```
 
-## The library
+## What is in here
 
-Everything reusable is in **`src/liquid-glass/`**. It has its own `package.json` and
-[README](src/liquid-glass/README.md) with the full API, theming variables, browser support and a
-"which component do I want?" table. To use it in another project, copy that folder, add `motion`, and:
+| Path | What |
+|---|---|
+| `src/liquid-glass/` | **The library.** Self-contained: copy it into any Vite/React app (see its README). Has `index.d.ts` types |
+| `src/site/` | The dev-tools page: navbar, hero, performance lab, component gallery, playground with code export, install guide, API reference, FAQ, footer |
+| `kit/` | Template for the downloadable kit: `README.md`, `CHANGELOG.md`, runnable `examples/vite-react-starter` |
+| `scripts/pack.mjs` | Builds `public/downloads/liquid-glass-kit.zip` and `liquid-glass-lib.zip` from `src/liquid-glass` + `kit/` (runs before `dev` and `build`) |
+| `scripts/bench/` | `test-optics.mjs` (map generator equivalence) and `perf.py` (scroll benchmark, needs Python + Playwright) |
 
-```jsx
-import { LiquidSwitch, LiquidSwipeView, LiquidBottomNav } from "./liquid-glass";
-```
+The "Download" buttons on the site serve the generated zips, so the kit users get is always built from the library
+you see on the page (one source of truth).
 
-## The demo (`src/demo/`)
+## What changed in v2 (short)
 
-Home · Kit · Split lens (autoplay + drag, full-stage) · Mobile split lens (swipe) · Any div · Playground · Usage, plus an
-About page (`#/about`). On phones the navigation becomes a bottom tab bar. Light / dark theme via the
-glass theme switch.
+Quality tiers + adaptive governor + refraction budget; filter region trimmed to the element; ring-only async maps;
+no-op passes removed; CSS rim light; merged glass filters only its blobs (fixes backwards text above phone docks);
+hydration-safe detection; TypeScript types; the page mounts only the selected gallery demo. Details and numbers:
+`kit/CHANGELOG.md` and `src/liquid-glass/README.md` → *Performance*.
 
-- `?glass=css` previews the iOS (non-refracting) look in any browser.
-- The tab icon is a live liquid-glass favicon (`startLiquidFavicon`); static versions are in `public/`.
-- The stage backgrounds use a hotlinked photo with gradient fallbacks underneath; self-host it by
-  putting an image in `public/` and changing the URL in `src/demo/demo.css`.
+Measured on the original demo page with only the library swapped (headless Chrome 153, software GL, 4× CPU throttle,
+median of 3): desktop scroll **13.4 → 38.7 fps**, phone emulation **19.2 → 33.4 fps**. These are relative numbers; a real
+GPU is far faster. To reproduce: build the old and new variants, serve them, then
+`python scripts/bench/perf.py <url> <label> 4 desktop|mobile`.
 
-## Look and font
+## Deploy
 
-The demo uses Apple's design language: a white page with light-gray tiles, near-black `#1d1d1f` text, `#0071e3` blue,
-big semibold tracking-tight headings (Apple dark when you switch the theme). Apple white is the default; the choice is
-remembered. The font stack is `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, …`: on Apple
-devices that resolves to the real SF Pro through the system font, and Windows / Android get Inter, the closest free web
-font. (SF Pro itself isn't bundled: Apple's licence only allows it on Apple platforms, which is what `-apple-system` is for.)
-The library components inherit the page font and read their colours from the CSS variables in
-[`src/liquid-glass/README.md`](src/liquid-glass/README.md#theming), so they follow any theme.
+Static site: `npm run build`, deploy `dist/`. `vercel.json` rewrites everything to `index.html`. For a sub-path, set
+`base` in `vite.config.js` (download links respect `import.meta.env.BASE_URL`).
 
 ## Notes
 
-- The original project ships without a LICENSE file. Check its terms before redistributing, and credit it.
-- This is an independent recreation of the Liquid Glass look, not affiliated with Apple.
+- Refraction needs a Chromium browser (`backdrop-filter: url(#svg)`); Safari/iOS and Firefox get the CSS glass look automatically.
+- The original project ships without a LICENSE file and is based on Kube's article
+  [Liquid Glass in the Browser](https://kube.io/blog/liquid-glass-css-svg). Check its terms before redistributing, and credit it.
+  Independent recreation, not affiliated with Apple.

@@ -285,7 +285,12 @@
 /* Refraction: the glass layer extends 6px past the container and is clipped back, so the 1px
    edge sampling artefacts of the displacement map fall outside what is visible. */
 .lg-merge-glass--svg {
-  inset: -6px;
+  /* position + size are set from JS: just the blobs' region, so it is cheap and never leaves the screen */
+  inset: auto;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
   -webkit-clip-path: inset(6px);
   clip-path: inset(6px);
 }

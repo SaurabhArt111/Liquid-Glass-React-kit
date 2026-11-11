@@ -1,0 +1,157 @@
+/* Phone mock + swipe pages (ported from the original demo) */
+/* ------------------------------- phone mock ------------------------------- */
+
+.phone-stage {
+  min-height: 0;
+  padding: 28px 12px;
+}
+
+.phone {
+  position: relative;
+  width: 340px;
+  max-width: 100%;
+  height: 600px;
+  overflow: hidden;
+  border: 6px solid var(--phone-edge);
+  border-radius: 48px;
+  background: var(--phone-bg);
+  box-shadow: 0 0 0 1px var(--line), var(--phone-shadow);
+  contain: paint;
+}
+
+.phone-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 76px 14px 110px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  scrollbar-width: none;
+  outline: none;
+}
+
+.phone-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 168px;
+  padding: 14px;
+  border-radius: 22px;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
+}
+
+.tile strong {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.tile span {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.phone-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 3;
+}
+
+.phone-bottom {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+}
+
+/* swipe pages */
+.sp {
+  position: relative;
+  height: 100%;
+  padding: 64px 18px 120px;
+  overflow: hidden;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.25);
+}
+
+.sp h3 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: -0.03em;
+}
+
+.sp p {
+  margin: 4px 0 18px;
+  opacity: 0.85;
+  font-size: 14px;
+}
+
+.sp--photos {
+  background: linear-gradient(160deg, #ff5f7e, #ffb347 70%);
+}
+
+.sp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sp-grid>div {
+  height: 118px;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.sp--map {
+  background:
+    radial-gradient(60% 40% at 30% 30%, rgba(24, 214, 201, 0.55), transparent 70%),
+    repeating-linear-gradient(35deg, rgba(255, 255, 255, 0.14) 0 2px, transparent 2px 38px),
+    repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.1) 0 2px, transparent 2px 46px),
+    linear-gradient(180deg, #0c3d4d, #15183a);
+}
+
+.sp-pin {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 50% 50% 0;
+  background: #ffd166;
+  transform: rotate(-45deg);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.sp--chat {
+  background: linear-gradient(190deg, #8d4dff, #3f6bff 55%, #18d6c9);
+}
+
+.sp-bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.sp-bubbles span {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 20px;
+  font-size: 15px;
+  line-height: 1.3;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.sp-bubbles .out {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.92);
+  color: #20245a;
+  text-shadow: none;
+}
+

@@ -2,25 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#07080d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)" />
+    <meta name="description" content="Liquid Glass components for React and Vite: real SVG refraction, springy physics, adaptive quality tiers. Download the kit and drop it into your app." />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>
-      // set the theme before first paint (no flash)
+      // set the theme before first paint (no flash): saved choice, else the system preference
       try {
         var t = localStorage.getItem("lg-theme");
-        if (t !== "light" && t !== "dark") t = "light"; // Apple white by default
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
         document.documentElement.dataset.theme = t;
-      } catch (e) {}
+      } catch (e) {
+        document.documentElement.dataset.theme = "dark";
+      }
     </script>
-    <title>Liquid Glass for React Vite</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap"
-      rel="stylesheet"
-    />
+    <title>Liquid Glass for React · Vite</title>
   </head>
   <body>
     <div id="root"></div>
